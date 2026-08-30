@@ -789,6 +789,38 @@ const YEAR_DATA = {
     }
 };
 
+function saveData() {
+    try {
+        console.log('💾 Menyimpan data...');
+        console.log(`  - Tahun: ${currentYear}`);
+        console.log(`  - Kategori: ${categories.length} items`);
+        console.log(`  - Transaksi: ${transactions.length} items`);
+        
+        // Simpan ke localStorage
+        localStorage.setItem(`fpe_skkmigas_categories_${currentYear}`, JSON.stringify(categories));
+        localStorage.setItem(`fpe_skkmigas_transactions_${currentYear}`, JSON.stringify(transactions));
+        localStorage.setItem('fpe_current_year', currentYear);
+        
+        // Verifikasi
+        const savedCat = localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`);
+        const savedTx = localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`);
+        
+        if (savedCat && savedTx) {
+            const parsedCat = JSON.parse(savedCat);
+            const parsedTx = JSON.parse(savedTx);
+            console.log(`✅ Data berhasil disimpan: ${parsedCat.length} kategori, ${parsedTx.length} transaksi`);
+        } else {
+            console.error('❌ Gagal verifikasi penyimpanan!');
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('❌ Error saving data:', error);
+        showToast('❌ Gagal menyimpan data: ' + error.message, 'error');
+        return false;
+    }
+}
+		
         function loadData() {
     try {
         const savedYear = localStorage.getItem('fpe_current_year') || '2026';
