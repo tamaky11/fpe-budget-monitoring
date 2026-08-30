@@ -757,11 +757,7 @@ const YEAR_DATA = {
         window.onload = function() {
     console.log('🚀 Dashboard Starting...');
     console.log('📋 Version: 2.0');
-
-			 setTimeout(function() {
-        autoSyncFromGitHub();
-    }, 1000);
-			
+    
     try {
         // Load data
         const success = loadData();
@@ -773,9 +769,7 @@ const YEAR_DATA = {
             transactions = JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2026));
             saveData();
         }
-
-
-		
+        
         // Inisialisasi
         initDateDefault();
         renderAll();
@@ -793,66 +787,6 @@ const YEAR_DATA = {
     }
 };
 
-
-// Auto-sync tanpa konfirmasi (untuk update otomatis)
-async function autoSyncFromGitHub() {
-    try {
-        const response = await fetch(https://github.com/tamaky11/fpe-budget-monitoring/blob/main/budget_backup_2026-08-30.json, {
-            headers: { 'Cache-Control': 'no-cache' }
-        });
-        
-        if (!response.ok) return;
-        
-        const data = await response.json();
-        
-        // Hitung total transaksi di GitHub
-        let totalTx = 0;
-        if (data['2026']?.transactions) {
-            totalTx += JSON.parse(data['2026'].transactions).length;
-        }
-        if (data['2027']?.transactions) {
-            totalTx += JSON.parse(data['2027'].transactions).length;
-        }
-        
-        // Jika GitHub punya data lebih banyak, auto update
-        if (totalTx > transactions.length) {
-            console.log(`🔄 Auto-sync: ${transactions.length} → ${totalTx} transaksi`);
-            
-            if (data['2026']) {
-                if (data['2026'].categories) {
-                    localStorage.setItem('fpe_skkmigas_categories_2026', data['2026'].categories);
-                }
-                if (data['2026'].transactions) {
-                    localStorage.setItem('fpe_skkmigas_transactions_2026', data['2026'].transactions);
-                }
-            }
-            
-            if (data['2027']) {
-                if (data['2027'].categories) {
-                    localStorage.setItem('fpe_skkmigas_categories_2027', data['2027'].categories);
-                }
-                if (data['2027'].transactions) {
-                    localStorage.setItem('fpe_skkmigas_transactions_2027', data['2027'].transactions);
-                }
-            }
-            
-            if (data.currentYear) {
-                localStorage.setItem('fpe_current_year', data.currentYear);
-            }
-            
-            loadData();
-            renderAll();
-            populateChecklist();
-            
-            showToast(`🔄 Auto-sync: ${totalTx} transaksi dari GitHub`, 'success');
-        }
-        
-    } catch (error) {
-        console.log('⚠️ Auto-sync gagal:', error.message);
-    }
-}
-
-		
 function saveData() {
     try {
         console.log('💾 Menyimpan data...');
@@ -939,7 +873,7 @@ function saveData() {
         console.error('❌ Error loading data:', error);
         return false;
     }
-}
+}		
       
 
 // Inisialisasi data untuk tahun 2027
