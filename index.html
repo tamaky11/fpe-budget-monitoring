@@ -8,9 +8,6 @@
 
 <script>
 // Konfigurasi Firebase (ganti dengan data dari project Anda)
-
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
 	
 const firebaseConfig = {
   apiKey: "AIzaSyChC9tNjQmh6uesUVR1844Vy3e6PZN8SeM",
@@ -828,12 +825,6 @@ function saveData() {
         const savedCat = localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`);
         const savedTx = localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`);
 
-// Tambahkan auto-sync ke Firebase
-    if (typeof firebase !== 'undefined' && firebase.database) {
-        saveToFirebase();
-    }
-}
-		
         if (savedCat && savedTx) {
             const parsedCat = JSON.parse(savedCat);
             const parsedTx = JSON.parse(savedTx);
@@ -850,6 +841,11 @@ function saveData() {
     }
 }
 
+		// Tambahkan auto-sync ke Firebase
+    if (typeof firebase !== 'undefined' && firebase.database) {
+        saveToFirebase();
+    }
+}
 
   function loadData() {
     try {
