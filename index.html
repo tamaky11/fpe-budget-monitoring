@@ -1,6 +1,35 @@
 <!DOCTYPE html>
 <html lang="id" class="h-full bg-slate-50">
 <head>
+
+	<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// Konfigurasi Firebase (ganti dengan data dari project Anda)
+
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+	
+const firebaseConfig = {
+  apiKey: "AIzaSyChC9tNjQmh6uesUVR1844Vy3e6PZN8SeM",
+  authDomain: "tamaky11.firebaseapp.com",
+  databaseURL: "https://tamaky11-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "tamaky11",
+  storageBucket: "tamaky11.firebasestorage.app",
+  messagingSenderId: "296847080290",
+  appId: "1:296847080290:web:a4c0b81d5da76db064ca3b",
+  measurementId: "G-VNPFEKW51C"
+};
+
+// Inisialisasi Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+
+</script>
+
+	
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>   
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -798,7 +827,13 @@ function saveData() {
         // Verifikasi
         const savedCat = localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`);
         const savedTx = localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`);
-        
+
+// Tambahkan auto-sync ke Firebase
+    if (typeof firebase !== 'undefined' && firebase.database) {
+        saveToFirebase();
+    }
+}
+		
         if (savedCat && savedTx) {
             const parsedCat = JSON.parse(savedCat);
             const parsedTx = JSON.parse(savedTx);
@@ -816,8 +851,6 @@ function saveData() {
 }
 
 
-
-
   function loadData() {
     try {
         const savedYear = localStorage.getItem('fpe_current_year') || '2026';
@@ -829,6 +862,21 @@ function saveData() {
         let savedCategories = localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`);
         let savedTx = localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`);
 
+ // Coba load dari Firebase juga (jika ada data)
+    if (typeof firebase !== 'undefined' && firebase.database) {
+        // Cek apakah ada data di Firebase
+        firebase.database().ref('budget_data').get()
+            .then((snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    // Jika Firebase lebih update, gunakan data Firebase
+                    // ... (bisa ditambahkan logika perbandingan)
+                }
+            })
+            .catch(() => {});
+    }
+}
+		
         if (savedCategories) {
             categories = JSON.parse(savedCategories);
             console.log(`✅ Data kategori ${currentYear} loaded dari localStorage:`, categories.length, 'items');
@@ -872,53 +920,119 @@ function saveData() {
 }
       
 
-// =====================================================
-// ===== TAMBAHAN: FITUR SYNC DATA DARI GITHUB =====
-// =====================================================
-
-// Konfigurasi URL GitHub
-const GITHUB_DATA_URL = 'https://raw.githubusercontent.com/tamaky11/fpe-budget-monitoring/main/budget_backup_2026-08-30.json';
-
-// Fungsi untuk mengambil data dari GitHub
-async function loadDataFromGitHub(showNotification = true) {
+// ===== FUNGSI SAVE KE FIREBASE =====
+function saveToFirebase() {
     try {
-        if (showNotification) {
-            showToast('🔄 Mengambil data dari GitHub...', 'success');
-        }
+        console.log('💾 Menyimpan ke Firebase...');
         
-        console.log('📥 Fetching data from GitHub...');
-        const response = await fetch(GITHUB_DATA_URL + '?t=' + Date.now());
+        // Buat objek data
+        const data = {
+            categories: categories,
+            transactions: transactions,
+            currentYear: currentYear,
+            updatedAt: new Date().toISOString()
+        };
         
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        // Simpan ke Firebase Realtime Database
+        // Data akan tersimpan di node 'budget_data'
+        firebase.database().ref('budget_data').set(data)
+            .then(() => {
+                console.log('✅ Data berhasil disimpan ke Firebase!');
+                showToast('✅ Data tersimpan ke Firebase!', 'success');
+            })
+            .catch((error) => {
+                console.error('❌ Error save ke Firebase:', error);
+                showToast('❌ Gagal menyimpan ke Firebase: ' + error.message, 'error');
+            });
+    } catch (error) {
+        console.error('❌ Error:', error);
+        showToast('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ===== FUNGSI LOAD DARI FIREBASE =====
+function loadFromFirebase() {
+    try {
+        console.log('📥 Mengambil data dari Firebase...');
+        showToast('📥 Mengambil data dari Firebase...', 'success');
         
-        const data = await response.json();
-        console.log('✅ Data GitHub berhasil diambil:', data);
-        
-        // Validasi data
-        if (!data.categories || !data.transactions) {
-            throw new Error('Format data tidak valid (missing categories or transactions)');
-        }
-        
-        // Tentukan tahun dari data atau gunakan currentYear
-        const year = data.year || currentYear || '2026';
-        
-        // Backup data lama sebelum overwrite (optional)
-        const oldCategories = JSON.parse(JSON.stringify(categories));
-        const oldTransactions = JSON.parse(JSON.stringify(transactions));
-        
-        // Update data
-        categories = data.categories;
-        transactions = data.transactions;
-        currentYear = year;
-        
-        // Simpan ke localStorage
-        localStorage.setItem(`fpe_skkmigas_categories_${year}`, JSON.stringify(categories));
-        localStorage.setItem(`fpe_skkmigas_transactions_${year}`, JSON.stringify(transactions));
-        localStorage.setItem('fpe_current_year', year);
-        localStorage.setItem('fpe_last_sync', new Date().toISOString());
-        
+        firebase.database().ref('budget_data').get()
+            .then((snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    console.log('📂 Data dari Firebase:', data);
+                    
+                    // Update data
+                    if (data.categories) {
+                        categories = data.categories;
+                    }
+                    if (data.transactions) {
+                        transactions = data.transactions;
+                    }
+                    if (data.currentYear) {
+                        currentYear = data.currentYear;
+                    }
+                    
+                    // Simpan ke localStorage sebagai cache
+                    saveData();
+                    
+                    // Render ulang
+                    renderAll();
+                    populateChecklist();
+                    
+                    showToast(`✅ Data dimuat dari Firebase (${transactions.length} transaksi)`, 'success');
+                    console.log('✅ Load dari Firebase selesai!');
+                } else {
+                    console.log('ℹ️ Tidak ada data di Firebase, menggunakan data lokal');
+                    showToast('ℹ️ Belum ada data di Firebase', 'info');
+                }
+            })
+            .catch((error) => {
+                console.error('❌ Error load dari Firebase:', error);
+                showToast('❌ Gagal load dari Firebase: ' + error.message, 'error');
+            });
+    } catch (error) {
+        console.error('❌ Error:', error);
+        showToast('❌ Error: ' + error.message, 'error');
+    }
+}
+
+// ===== SYNC OTOMATIS =====
+// Fungsi ini akan menyimpan ke Firebase setiap ada perubahan
+function autoSyncToFirebase() {
+    // Simpan ke localStorage dulu
+    saveData();
+    // Lalu simpan ke Firebase
+    saveToFirebase();
+}
+
+// ===== CEK UPDATE DARI FIREBASE =====
+function checkFirebaseUpdate() {
+    firebase.database().ref('budget_data/updatedAt').get()
+        .then((snapshot) => {
+            if (snapshot.exists()) {
+                const firebaseUpdate = snapshot.val();
+                const localUpdate = localStorage.getItem('fpe_last_update') || '0';
+                
+                console.log(`🔍 Firebase: ${firebaseUpdate}, Local: ${localUpdate}`);
+                
+                if (firebaseUpdate > localUpdate) {
+                    showConfirm(
+                        'Update Tersedia di Firebase!',
+                        `Data di Firebase lebih baru. Ingin memuat data terbaru?`,
+                        function() {
+                            loadFromFirebase();
+                        }
+                    );
+                }
+            }
+        })
+        .catch((error) => {
+            console.log('⚠️ Gagal cek update:', error.message);
+        });
+}
+
+		
         // Re-render UI
         renderAll();
         populateChecklist();
