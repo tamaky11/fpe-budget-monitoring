@@ -994,21 +994,6 @@ function exportDataBackup() {
     showToast('📥 Data backup berhasil di-download', 'success');
 }
 		
-        function resetDataToDefault() {
-    showConfirm(
-        `Reset Data SKKMigas ${currentYear}`,
-        `Apakah Anda yakin ingin mengembalikan seluruh data ke alokasi budget awal SKKMigas ${currentYear}? Semua transaksi yang baru di-entry akan HILANG.`,
-        () => {
-            categories = JSON.parse(JSON.stringify(YEAR_DATA[currentYear].categories));
-            transactions = JSON.parse(JSON.stringify(YEAR_DATA[currentYear].transactions));
-            selectedChecklistItems.clear();
-            saveData();
-            renderAll();
-            populateChecklist();
-            showToast(`Data berhasil di-reset ke nilai Approved SKKMigas ${currentYear}`, 'success');
-        }
-    );
-}
 
         function setCurrency(curr) {
             currentCurrency = curr;
