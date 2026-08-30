@@ -876,6 +876,141 @@ function saveData() {
 }
       
 
+// =====================================================
+// ===== TAMBAHAN: FITUR SYNC DATA DARI GITHUB =====
+// =====================================================
+
+// Konfigurasi URL GitHub
+const GITHUB_DATA_URL = 'https://raw.githubusercontent.com/tamaky11/fpe-budget-monitoring/main/budget_backup_2026-08-30.json';
+
+// Fungsi untuk mengambil data dari GitHub
+async function loadDataFromGitHub(showNotification = true) {
+    try {
+        if (showNotification) {
+            showToast('🔄 Mengambil data dari GitHub...', 'success');
+        }
+        
+        console.log('📥 Fetching data from GitHub...');
+        const response = await fetch(GITHUB_DATA_URL + '?t=' + Date.now());
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ Data GitHub berhasil diambil:', data);
+        
+        // Validasi data
+        if (!data.categories || !data.transactions) {
+            throw new Error('Format data tidak valid (missing categories or transactions)');
+        }
+        
+        // Tentukan tahun dari data atau gunakan currentYear
+        const year = data.year || currentYear || '2026';
+        
+        // Backup data lama sebelum overwrite (optional)
+        const oldCategories = JSON.parse(JSON.stringify(categories));
+        const oldTransactions = JSON.parse(JSON.stringify(transactions));
+        
+        // Update data
+        categories = data.categories;
+        transactions = data.transactions;
+        currentYear = year;
+        
+        // Simpan ke localStorage
+        localStorage.setItem(`fpe_skkmigas_categories_${year}`, JSON.stringify(categories));
+        localStorage.setItem(`fpe_skkmigas_transactions_${year}`, JSON.stringify(transactions));
+        localStorage.setItem('fpe_current_year', year);
+        localStorage.setItem('fpe_last_sync', new Date().toISOString());
+        
+        // Re-render UI
+        renderAll();
+        populateChecklist();
+        
+        // Update year buttons
+        document.getElementById('btnYear2026').className = year === '2026' ? 
+            'px-2.5 py-1 rounded-lg bg-white text-brand-700 shadow-sm' : 
+            'px-2.5 py-1 rounded-lg hover:text-slate-900';
+        document.getElementById('btnYear2027').className = year === '2027' ? 
+            'px-2.5 py-1 rounded-lg bg-white text-brand-700 shadow-sm' : 
+            'px-2.5 py-1 rounded-lg hover:text-slate-900';
+        
+        if (showNotification) {
+            showToast(`✅ Data berhasil dimuat dari GitHub (${transactions.length} transaksi)`, 'success');
+        }
+        
+        console.log(`📊 Total transaksi: ${transactions.length}`);
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Gagal mengambil data dari GitHub:', error);
+        if (showNotification) {
+            showToast('⚠️ Gagal memuat data dari GitHub, menggunakan data lokal', 'error');
+        }
+        return false;
+    }
+}
+
+// Fungsi untuk sinkronisasi manual (dipanggil dari tombol)
+async function syncFromGitHub() {
+    await loadDataFromGitHub(true);
+}
+
+// Fungsi untuk mengecek dan memperbarui data di background
+async function checkForUpdates() {
+    try {
+        const response = await fetch(GITHUB_DATA_URL + '?t=' + Date.now(), { 
+            method: 'HEAD' 
+        });
+        
+        if (response.ok) {
+            const lastModified = response.headers.get('last-modified');
+            const lastSync = localStorage.getItem('fpe_last_sync');
+            
+            if (lastModified && (!lastSync || new Date(lastModified) > new Date(lastSync))) {
+                console.log('📢 Data baru tersedia! Melakukan sinkronisasi...');
+                await loadDataFromGitHub(false);
+            }
+        }
+    } catch (error) {
+        console.log('ℹ️ Background check skipped:', error.message);
+    }
+}
+
+// Modifikasi window.onload untuk menambahkan sync
+// Simpan fungsi onload yang sudah ada
+const originalOnload = window.onload;
+
+// Override window.onload dengan versi baru yang tetap mempertahankan fungsi lama
+window.onload = function() {
+    console.log('🚀 Dashboard Starting with GitHub Sync...');
+    
+    // Panggil fungsi onload asli
+    if (typeof originalOnload === 'function') {
+        originalOnload();
+    }
+    
+    // Tambahan: Cek update dari GitHub setelah 2 detik
+    setTimeout(() => {
+        // Cek apakah data perlu disync
+        const hasLocalData = localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`);
+        const hasLocalTx = localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`);
+        
+        if (!hasLocalData || !hasLocalTx) {
+            // Tidak ada data lokal, ambil dari GitHub
+            loadDataFromGitHub(true);
+        } else {
+            // Ada data lokal, cek update di background
+            checkForUpdates();
+        }
+    }, 2000);
+    
+    // Auto sync setiap 5 menit (jika halaman tetap terbuka)
+    setInterval(() => {
+        checkForUpdates();
+    }, 5 * 60 * 1000);
+};
+		
 // Inisialisasi data untuk tahun 2027
 function initYearData(year) {
     if (!year) year = '2027';
