@@ -858,21 +858,6 @@ function saveData() {
         let savedCategories = localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`);
         let savedTx = localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`);
 
- // Coba load dari Firebase juga (jika ada data)
-    if (typeof firebase !== 'undefined' && firebase.database) {
-        // Cek apakah ada data di Firebase
-        firebase.database().ref('budget_data').get()
-            .then((snapshot) => {
-                if (snapshot.exists()) {
-                    const data = snapshot.val();
-                    // Jika Firebase lebih update, gunakan data Firebase
-                    // ... (bisa ditambahkan logika perbandingan)
-                }
-            })
-            .catch(() => {});
-    }
-
-		
         if (savedCategories) {
             categories = JSON.parse(savedCategories);
             console.log(`✅ Data kategori ${currentYear} loaded dari localStorage:`, categories.length, 'items');
@@ -906,6 +891,21 @@ function saveData() {
             // SIMPAN ke localStorage agar tidak hilang
             localStorage.setItem(`fpe_skkmigas_transactions_${currentYear}`, JSON.stringify(transactions));
         }
+
+		// Coba load dari Firebase juga (jika ada data)
+    if (typeof firebase !== 'undefined' && firebase.database) {
+        // Cek apakah ada data di Firebase
+        firebase.database().ref('budget_data').get()
+            .then((snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    // Jika Firebase lebih update, gunakan data Firebase
+                    // ... (bisa ditambahkan logika perbandingan)
+                }
+            })
+            .catch(() => {});
+    }
+
         
         console.log(`📊 Total transaksi saat ini: ${transactions.length}`);
         return true;
