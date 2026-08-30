@@ -787,90 +787,40 @@ const YEAR_DATA = {
     }
 };
 
-function saveData() {
+// Ganti fungsi saveData()
+async function saveData() {
     try {
-        console.log('💾 Menyimpan data...');
-        console.log(`  - Tahun: ${currentYear}`);
-        console.log(`  - Kategori: ${categories.length} items`);
-        console.log(`  - Transaksi: ${transactions.length} items`);
-        
-        // Simpan ke localStorage
-        localStorage.setItem(`fpe_skkmigas_categories_${currentYear}`, JSON.stringify(categories));
-        localStorage.setItem(`fpe_skkmigas_transactions_${currentYear}`, JSON.stringify(transactions));
-        localStorage.setItem('fpe_current_year', currentYear);
-        
-        // Verifikasi
-        const savedCat = localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`);
-        const savedTx = localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`);
-        
-        if (savedCat && savedTx) {
-            const parsedCat = JSON.parse(savedCat);
-            const parsedTx = JSON.parse(savedTx);
-            console.log(`✅ Data berhasil disimpan: ${parsedCat.length} kategori, ${parsedTx.length} transaksi`);
-        } else {
-            console.error('❌ Gagal verifikasi penyimpanan!');
-        }
-        
-        return true;
+        const response = await fetch('/api/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                year: currentYear,
+                categories: categories,
+                transactions: transactions
+            })
+        });
+        const result = await response.json();
+        console.log('✅ Data saved to server:', result);
     } catch (error) {
-        console.error('❌ Error saving data:', error);
-        showToast('❌ Gagal menyimpan data: ' + error.message, 'error');
-        return false;
+        console.error('❌ Error saving to server:', error);
+    }
+}
+
+// Ganti fungsi loadData()
+async function loadData() {
+    try {
+        const response = await fetch('/api/load');
+        const data = await response.json();
+        categories = data.categories;
+        transactions = data.transactions;
+        currentYear = data.year;
+        console.log('✅ Data loaded from server:', data);
+    } catch (error) {
+        console.error('❌ Error loading from server:', error);
     }
 }
 		
-        function loadData() {
-    try {
-        const savedYear = localStorage.getItem('fpe_current_year') || '2026';
-        currentYear = savedYear;
-        
-        console.log(`📂 Loading data untuk tahun: ${currentYear}`);
-
-        // CEK APAKAH DATA ADA DI LOCALSTORAGE
-        let savedCategories = localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`);
-        let savedTx = localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`);
-
-        if (savedCategories) {
-            categories = JSON.parse(savedCategories);
-            console.log(`✅ Data kategori ${currentYear} loaded dari localStorage:`, categories.length, 'items');
-        } else {
-            // HANYA jika data TIDAK ADA di localStorage, baru buat default
-            console.log(`⚠️ Data kategori ${currentYear} tidak ditemukan di localStorage, membuat default`);
-            if (currentYear === '2026') {
-                categories = JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES));
-            } else if (currentYear === '2027') {
-                categories = JSON.parse(JSON.stringify(SKKMIGAS_2027_CATEGORIES));
-            } else {
-                categories = JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES));
-            }
-            // SIMPAN ke localStorage agar tidak hilang
-            localStorage.setItem(`fpe_skkmigas_categories_${currentYear}`, JSON.stringify(categories));
-        }
-
-        if (savedTx) {
-            transactions = JSON.parse(savedTx);
-            console.log(`✅ Data transaksi ${currentYear} loaded dari localStorage:`, transactions.length, 'items');
-        } else {
-            // HANYA jika data TIDAK ADA di localStorage, baru buat default
-            console.log(`⚠️ Data transaksi ${currentYear} tidak ditemukan di localStorage, membuat default`);
-            if (currentYear === '2026') {
-                transactions = JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2026));
-            } else if (currentYear === '2027') {
-                transactions = JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2027));
-            } else {
-                transactions = [];
-            }
-            // SIMPAN ke localStorage agar tidak hilang
-            localStorage.setItem(`fpe_skkmigas_transactions_${currentYear}`, JSON.stringify(transactions));
-        }
-        
-        console.log(`📊 Total transaksi saat ini: ${transactions.length}`);
-        return true;
-    } catch (error) {
-        console.error('❌ Error loading data:', error);
-        return false;
-    }
-}
+      
 
 // Inisialisasi data untuk tahun 2027
 function initYearData(year) {
