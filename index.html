@@ -2637,34 +2637,6 @@ function forceSaveData() {
     }
 }
 		
-// Jalankan di console browser
-function forceResetAllData() {
-    // Hapus semua data
-    ['2026', '2027'].forEach(year => {
-        localStorage.removeItem(`fpe_skkmigas_categories_${year}`);
-        localStorage.removeItem(`fpe_skkmigas_transactions_${year}`);
-    });
-    localStorage.removeItem('fpe_current_year');
-    
-    // Reset ke default
-    currentYear = '2026';
-    categories = JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES));
-    transactions = JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2026));
-    selectedChecklistItems.clear();
-    
-    // Simpan
-    localStorage.setItem('fpe_skkmigas_categories_2026', JSON.stringify(categories));
-    localStorage.setItem('fpe_skkmigas_transactions_2026', JSON.stringify(transactions));
-    localStorage.setItem('fpe_current_year', '2026');
-    
-    renderAll();
-    populateChecklist();
-    showToast('Data berhasil di-reset!', 'success');
-    console.log('✅ Force reset completed!');
-}
-
-// Panggil fungsi ini
-forceResetAllData();
     </script>
 
 
