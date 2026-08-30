@@ -930,6 +930,43 @@ window.onload = function() {
         showToast('❌ Error loading dashboard', 'error');
     }
 };
+
+		function checkDataIntegrity() {
+    console.log('🔍 === DATA INTEGRITY CHECK ===');
+    console.log(`📌 Tahun aktif: ${currentYear}`);
+    console.log(`📊 Kategori di memory: ${categories.length} items`);
+    console.log(`📊 Transaksi di memory: ${transactions.length} items`);
+    
+    // Cek di localStorage
+    const storedCat = localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`);
+    const storedTx = localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`);
+    
+    if (storedCat) {
+        const parsedCat = JSON.parse(storedCat);
+        console.log(`📁 Kategori di localStorage: ${parsedCat.length} items`);
+    } else {
+        console.log('❌ Kategori TIDAK ADA di localStorage!');
+    }
+    
+    if (storedTx) {
+        const parsedTx = JSON.parse(storedTx);
+        console.log(`📁 Transaksi di localStorage: ${parsedTx.length} items`);
+    } else {
+        console.log('❌ Transaksi TIDAK ADA di localStorage!');
+    }
+    
+    // Bandingkan memory vs localStorage
+    if (storedTx) {
+        const parsedTx = JSON.parse(storedTx);
+        if (transactions.length !== parsedTx.length) {
+            console.warn(`⚠️ MISMATCH! Memory: ${transactions.length}, localStorage: ${parsedTx.length}`);
+        } else {
+            console.log('✅ Data konsisten antara memory dan localStorage');
+        }
+    }
+    
+    console.log('🔍 === END CHECK ===');
+}
 		
 	function setYear(year) {
     console.log(`🔄 Switching to year: ${year}`);
