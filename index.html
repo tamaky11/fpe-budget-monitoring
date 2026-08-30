@@ -838,13 +838,14 @@ function saveData() {
         showToast('❌ Gagal menyimpan data: ' + error.message, 'error');
         return false;
     }
-}
-
-		// Tambahkan auto-sync ke Firebase
+	// Tambahkan auto-sync ke Firebase
     if (typeof firebase !== 'undefined' && firebase.database) {
         saveToFirebase();
     }
 }
+
+	
+
 
   function loadData() {
     try {
