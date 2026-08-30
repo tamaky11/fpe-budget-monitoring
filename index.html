@@ -787,7 +787,7 @@ const YEAR_DATA = {
         function loadData() {
     try {
         // Ambil tahun yang disimpan
-        const savedYear = localStorage.getItem('fpe_current_year') || '2026';
+       const savedYear = sessionStorage.getItem('fpe_current_year') || '2026';
         currentYear = savedYear;
         
         console.log(`📂 Loading data untuk tahun: ${currentYear}`);
@@ -895,24 +895,29 @@ const YEAR_DATA = {
 }
 
 	function saveData() {
-    try {
-        // Simpan data per tahun
-        localStorage.setItem(`fpe_skkmigas_categories_${currentYear}`, JSON.stringify(categories));
-        localStorage.setItem(`fpe_skkmigas_transactions_${currentYear}`, JSON.stringify(transactions));
-        
-        // Simpan tahun aktif
-        localStorage.setItem('fpe_current_year', currentYear);
-        
-        console.log(`✅ Data berhasil disimpan untuk tahun ${currentYear}:`, {
-            categories: categories.length,
-            transactions: transactions.length
-        });
-    } catch (error) {
-        console.error('❌ Error saving data:', error);
-        showToast('❌ Gagal menyimpan data', 'error');
-    }
+    sessionStorage.setItem(`fpe_skkmigas_categories_${currentYear}`, JSON.stringify(categories));
+    sessionStorage.setItem(`fpe_skkmigas_transactions_${currentYear}`, JSON.stringify(transactions));
+    sessionStorage.setItem('fpe_current_year', currentYear);
 }
 
+
+function exportDataBackup() {
+    const data = {
+        year: currentYear,
+        categories: categories,
+        transactions: transactions,
+        exportedAt: new Date().toISOString()
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `backup_data_${currentYear}_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    showToast('📥 Data backup berhasil di-download', 'success');
+}
+		
         function resetDataToDefault() {
     showConfirm(
         `Reset Data SKKMigas ${currentYear}`,
