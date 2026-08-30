@@ -274,6 +274,11 @@
 <button onclick="forceSaveAndReload()" class="text-xs text-slate-400 hover:text-slate-600">
     <i class="fas fa-save"></i>
 </button>
+
+<!-- Tambahkan di header atau utility menu -->
+<button onclick="forceRefreshData()" class="w-full text-left px-4 py-2 text-xs text-blue-600 hover:bg-blue-50 flex items-center">
+    <i class="fas fa-sync text-blue-500 w-5"></i> Refresh Data
+</button>
 		
         <!-- Top Metrics / Overview Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -786,13 +791,11 @@ const YEAR_DATA = {
 
         function loadData() {
     try {
-        // Ambil tahun yang disimpan
-       const savedYear = sessionStorage.getItem('fpe_current_year') || '2026';
+        const savedYear = localStorage.getItem('fpe_current_year') || '2026';
         currentYear = savedYear;
         
         console.log(`📂 Loading data untuk tahun: ${currentYear}`);
 
-        // Ambil data dari localStorage
         let savedCategories = localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`);
         let savedTx = localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`);
 
@@ -800,42 +803,102 @@ const YEAR_DATA = {
             categories = JSON.parse(savedCategories);
             console.log(`✅ Data kategori ${currentYear} loaded:`, categories.length, 'items');
         } else {
-            // Gunakan data default dari YEAR_DATA
-            if (YEAR_DATA && YEAR_DATA[currentYear] && YEAR_DATA[currentYear].categories) {
-                categories = JSON.parse(JSON.stringify(YEAR_DATA[currentYear].categories));
-                localStorage.setItem(`fpe_skkmigas_categories_${currentYear}`, JSON.stringify(categories));
-                console.log(`✅ Data kategori ${currentYear} dibuat dari default:`, categories.length, 'items');
+            // Jika tidak ada data, buat dari default
+            if (currentYear === '2026') {
+                categories = JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES));
+            } else if (currentYear === '2027') {
+                categories = JSON.parse(JSON.stringify(SKKMIGAS_2027_CATEGORIES));
             } else {
-                console.error(`❌ Data untuk tahun ${currentYear} tidak ditemukan`);
-                categories = [];
+                categories = JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES));
             }
+            localStorage.setItem(`fpe_skkmigas_categories_${currentYear}`, JSON.stringify(categories));
+            console.log(`✅ Data kategori ${currentYear} dibuat dari default:`, categories.length, 'items');
         }
 
         if (savedTx) {
             transactions = JSON.parse(savedTx);
             console.log(`✅ Data transaksi ${currentYear} loaded:`, transactions.length, 'items');
         } else {
-            if (YEAR_DATA && YEAR_DATA[currentYear] && YEAR_DATA[currentYear].transactions) {
-                transactions = JSON.parse(JSON.stringify(YEAR_DATA[currentYear].transactions));
-                localStorage.setItem(`fpe_skkmigas_transactions_${currentYear}`, JSON.stringify(transactions));
-                console.log(`✅ Data transaksi ${currentYear} dibuat dari default:`, transactions.length, 'items');
+            // Jika tidak ada transaksi, buat kosong atau dengan sample
+            if (currentYear === '2026') {
+                transactions = JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2026));
+            } else if (currentYear === '2027') {
+                transactions = JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2027));
             } else {
                 transactions = [];
-                localStorage.setItem(`fpe_skkmigas_transactions_${currentYear}`, JSON.stringify(transactions));
-                console.log(`✅ Data transaksi ${currentYear} dibuat kosong`);
             }
+            localStorage.setItem(`fpe_skkmigas_transactions_${currentYear}`, JSON.stringify(transactions));
+            console.log(`✅ Data transaksi ${currentYear} dibuat:`, transactions.length, 'items');
         }
         
         return true;
     } catch (error) {
         console.error('❌ Error loading data:', error);
-        showToast('❌ Gagal memuat data', 'error');
         return false;
     }
 }
 
+// Inisialisasi data untuk tahun 2027
+function initYearData(year) {
+    if (!year) year = '2027';
+    
+    // Cek apakah data sudah ada
+    const existingCategories = localStorage.getItem(`fpe_skkmigas_categories_${year}`);
+    const existingTx = localStorage.getItem(`fpe_skkmigas_transactions_${year}`);
+    
+    if (!existingCategories) {
+        let defaultCategories;
+        if (year === '2027') {
+            defaultCategories = JSON.parse(JSON.stringify(SKKMIGAS_2027_CATEGORIES));
+        } else {
+            defaultCategories = JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES));
+        }
+        localStorage.setItem(`fpe_skkmigas_categories_${year}`, JSON.stringify(defaultCategories));
+        console.log(`✅ Data kategori ${year} diinisialisasi`);
+    }
+    
+    if (!existingTx) {
+        let defaultTx;
+        if (year === '2027') {
+            defaultTx = JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2027));
+        } else {
+            defaultTx = JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2026));
+        }
+        localStorage.setItem(`fpe_skkmigas_transactions_${year}`, JSON.stringify(defaultTx));
+        console.log(`✅ Data transaksi ${year} diinisialisasi`);
+    }
+}
+
+// Panggil saat window load
+window.onload = function() {
+    console.log('🚀 Dashboard Starting...');
+    
+    // Inisialisasi data untuk kedua tahun
+    initYearData('2026');
+    initYearData('2027');
+    
+    // Load data
+    loadData();
+    initDateDefault();
+    renderAll();
+    populateChecklist();
+    verifyDataStorage();
+    
+    console.log('✅ Dashboard Ready!');
+};
+		
 	function setYear(year) {
     console.log(`🔄 Switching to year: ${year}`);
+    
+    // Pastikan data untuk tahun tersebut ada
+    const existingCategories = localStorage.getItem(`fpe_skkmigas_categories_${year}`);
+    const existingTx = localStorage.getItem(`fpe_skkmigas_transactions_${year}`);
+    
+    if (!existingCategories || !existingTx) {
+        console.log(`📂 Data untuk tahun ${year} belum ada, membuat baru...`);
+        initYearData(year);
+    }
+    
     currentYear = year;
     
     // Update button styles
@@ -846,58 +909,39 @@ const YEAR_DATA = {
         'px-2.5 py-1 rounded-lg bg-white text-brand-700 shadow-sm' : 
         'px-2.5 py-1 rounded-lg hover:text-slate-900';
     
-    // Load data for selected year
+    // Load data
     const savedCategories = localStorage.getItem(`fpe_skkmigas_categories_${year}`);
     const savedTx = localStorage.getItem(`fpe_skkmigas_transactions_${year}`);
     
-    console.log(`📂 Data untuk tahun ${year}: categories=${!!savedCategories}, transactions=${!!savedTx}`);
-    
     if (savedCategories) {
         categories = JSON.parse(savedCategories);
-        console.log(`📊 Categories loaded: ${categories.length} items`);
     } else {
-        // Pastikan data default ada
-        if (YEAR_DATA && YEAR_DATA[year] && YEAR_DATA[year].categories) {
-            categories = JSON.parse(JSON.stringify(YEAR_DATA[year].categories));
-            localStorage.setItem(`fpe_skkmigas_categories_${year}`, JSON.stringify(categories));
-            console.log(`📊 Categories created from default: ${categories.length} items`);
-        } else {
-            console.error(`❌ Tidak ada data default untuk tahun ${year}`);
-            categories = [];
-        }
+        categories = year === '2026' ? 
+            JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES)) : 
+            JSON.parse(JSON.stringify(SKKMIGAS_2027_CATEGORIES));
+        localStorage.setItem(`fpe_skkmigas_categories_${year}`, JSON.stringify(categories));
     }
     
     if (savedTx) {
         transactions = JSON.parse(savedTx);
-        console.log(`📝 Transactions loaded: ${transactions.length} items`);
     } else {
-        if (YEAR_DATA && YEAR_DATA[year] && YEAR_DATA[year].transactions) {
-            transactions = JSON.parse(JSON.stringify(YEAR_DATA[year].transactions));
-            localStorage.setItem(`fpe_skkmigas_transactions_${year}`, JSON.stringify(transactions));
-            console.log(`📝 Transactions created from default: ${transactions.length} items`);
-        } else {
-            transactions = [];
-            localStorage.setItem(`fpe_skkmigas_transactions_${year}`, JSON.stringify(transactions));
-        }
+        transactions = year === '2026' ? 
+            JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2026)) : 
+            JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2027));
+        localStorage.setItem(`fpe_skkmigas_transactions_${year}`, JSON.stringify(transactions));
     }
     
     localStorage.setItem('fpe_current_year', year);
     
-    // Reset checklist selections
+    // Reset checklist
     selectedChecklistItems.clear();
     
-    // Re-render everything
+    // Re-render
     renderAll();
     populateChecklist();
     
+    console.log(`✅ Selesai beralih ke tahun ${year}, transaksi: ${transactions.length}`);
     showToast(`Berganti ke tahun ${year}`, 'success');
-    console.log(`✅ Selesai beralih ke tahun ${year}`);
-}
-
-	function saveData() {
-    sessionStorage.setItem(`fpe_skkmigas_categories_${currentYear}`, JSON.stringify(categories));
-    sessionStorage.setItem(`fpe_skkmigas_transactions_${currentYear}`, JSON.stringify(transactions));
-    sessionStorage.setItem('fpe_current_year', currentYear);
 }
 
 
@@ -2505,6 +2549,29 @@ function deleteAllTransactions() {
     );
 }
 
+function forceRefreshData() {
+    console.log('🔄 Force refresh data...');
+    
+    // Hapus data lama
+    localStorage.removeItem(`fpe_skkmigas_categories_2026`);
+    localStorage.removeItem(`fpe_skkmigas_transactions_2026`);
+    localStorage.removeItem(`fpe_skkmigas_categories_2027`);
+    localStorage.removeItem(`fpe_skkmigas_transactions_2027`);
+    localStorage.removeItem('fpe_current_year');
+    
+    // Re-inisialisasi
+    initYearData('2026');
+    initYearData('2027');
+    
+    // Load ulang
+    loadData();
+    renderAll();
+    populateChecklist();
+    
+    showToast('✅ Data berhasil di-refresh', 'success');
+    console.log('✅ Force refresh selesai!');
+}
+		
 // Jalankan di console browser
 function forceResetAllData() {
     // Hapus semua data
