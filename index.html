@@ -1127,7 +1127,9 @@ function exportDataBackup() {
    				const remaining = totalBudget - totalSpent;
    				const usagePercent = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
 
-    document.getElementById('statTotalBudget').innerHTML = `${formatVal(totalBudget)} <span class="text-xs font-normal text-slate-400">(${currentYear})</span>`;
+	console.log('Remaining value:', remaining);
+	console.log('Formatted remaining:', formatVal(remaining));
+	document.getElementById('statTotalBudget').innerHTML = `${formatVal(totalBudget)} <span class="text-xs font-normal text-slate-400">(${currentYear})</span>`;
     document.getElementById('statTotalSpent').innerHTML = `${formatVal(totalSpent)} <span class="text-xs font-normal text-slate-400">(${currentYear})</span>`;
 	document.getElementById('statSpentCount').innerHTML = `<i class="fas fa-receipt text-rose-400 mr-1.5"></i> ${transactions.length} Transaksi Dicatat`;
 	document.getElementById('statRemainingBudget').innerHTML = `${formatVal(remaining)}`;
