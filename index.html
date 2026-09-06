@@ -1435,14 +1435,7 @@ function exportDataBackup() {
             // Update active filters display
             updateActiveFiltersDisplay(searchQuery, filteredCategories.length);
 
-
-	    const container = document.getElementById('activeFiltersDisplay');
-    let html = '';
-
-  // Show current year
-    html += `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-medium">
-        <i class="fas fa-calendar text-[8px]"></i> Tahun ${currentYear}
-    </span>`;
+	  
             const labels = filteredCategories.map(c => c.code);
             const budgetData = filteredCategories.map(c => currentCurrency === 'USD' ? c.budget : c.budget * USD_TO_IDR);
             const spentData = filteredCategories.map(c => {
