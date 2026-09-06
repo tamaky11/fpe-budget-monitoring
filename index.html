@@ -309,8 +309,8 @@
                 <div class="mt-3">
                     <div id="statTotalSpent" class="text-2xl font-bold text-slate-900">$ 0</div>
                     <p id="statSpentCount" class="text-xs text-slate-500 mt-1 flex items-center">
-                        <i class="fas fa-receipt text-rose-400 mr-1.5"></i> 0 Transaksi Dicatat
-                    </p>
+   						 <i class="fas fa-receipt text-rose-400 mr-1.5"></i> 0 Transaksi Dicatat
+					</p>
                 </div>
             </div>
 
@@ -1123,14 +1123,15 @@ function exportDataBackup() {
 
         function renderSummaryCards() {
                 const totalBudget = getTotalBudget();
-    const totalSpent = getTotalSpent();
-    const remaining = totalBudget - totalSpent;
-    const usagePercent = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
+    			const totalSpent = getTotalSpent();
+   				const remaining = totalBudget - totalSpent;
+   				const usagePercent = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
 
     document.getElementById('statTotalBudget').innerHTML = `${formatVal(totalBudget)} <span class="text-xs font-normal text-slate-400">(${currentYear})</span>`;
     document.getElementById('statTotalSpent').innerHTML = `${formatVal(totalSpent)} <span class="text-xs font-normal text-slate-400">(${currentYear})</span>`;
-
-            // Overall Progress Bar & Badge
+	document.getElementById('statSpentCount').innerHTML = `<i class="fas fa-receipt text-rose-400 mr-1.5"></i> ${transactions.length} Transaksi Dicatat`;
+            
+			// Overall Progress Bar & Badge
             const badge = document.getElementById('badgeUsagePercent');
             const progressBar = document.getElementById('progressBarOverall');
             const statusText = document.getElementById('statOverallStatusText');
