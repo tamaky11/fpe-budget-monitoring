@@ -1130,7 +1130,8 @@ function exportDataBackup() {
     document.getElementById('statTotalBudget').innerHTML = `${formatVal(totalBudget)} <span class="text-xs font-normal text-slate-400">(${currentYear})</span>`;
     document.getElementById('statTotalSpent').innerHTML = `${formatVal(totalSpent)} <span class="text-xs font-normal text-slate-400">(${currentYear})</span>`;
 	document.getElementById('statSpentCount').innerHTML = `<i class="fas fa-receipt text-rose-400 mr-1.5"></i> ${transactions.length} Transaksi Dicatat`;
-            
+	document.getElementById('statRemainingBudget').innerHTML = `${formatVal(remaining)}`;
+			
 			// Overall Progress Bar & Badge
             const badge = document.getElementById('badgeUsagePercent');
             const progressBar = document.getElementById('progressBarOverall');
