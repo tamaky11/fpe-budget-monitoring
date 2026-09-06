@@ -824,7 +824,7 @@ async function saveData() {
 
 // 4. Perbarui/Buat fungsi loadData() untuk mengambil data dari Firestore saat web dibuka
 async function loadData() {
- 	populateChecklist(); 
+ 	
 	try {
     const docRef = db.collection("fpe_skkmigas").doc(String(currentYear));
     const docSnap = await docRef.get();
@@ -848,6 +848,7 @@ async function loadData() {
   if (typeof renderAll === "function") {
     renderAll();
   }
+return true;
 }
 
 // Jalankan loadData saat aplikasi pertama kali dimuat
@@ -888,8 +889,7 @@ function initYearData(year) {
 }
 
 window.onload = function() {
-    
-    
+        
 	console.log('🚀 Dashboard Starting...');
     console.log('📋 Version: 2.2');
 
@@ -900,10 +900,7 @@ window.onload = function() {
     try {
         // HANYA LOAD DATA, JANGAN RESET
         loadData();
-        
-        // Debug: cek data setelah load
-        console.log(`📊 Setelah load: ${transactions.length} transaksi`);
-        
+               
         // Inisialisasi lainnya
         initDateDefault();
         renderAll();
@@ -1126,6 +1123,7 @@ function exportDataBackup() {
             renderCategorySelectOptions();
             renderTransactionList();
             renderCharts();
+			populateChecklist();
         }
 
         function renderSummaryCards() {
