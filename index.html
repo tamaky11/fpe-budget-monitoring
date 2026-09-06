@@ -824,7 +824,8 @@ async function saveData() {
 
 // 4. Perbarui/Buat fungsi loadData() untuk mengambil data dari Firestore saat web dibuka
 async function loadData() {
-  try {
+ 	populateChecklist(); 
+	try {
     const docRef = db.collection("fpe_skkmigas").doc(String(currentYear));
     const docSnap = await docRef.get();
 
