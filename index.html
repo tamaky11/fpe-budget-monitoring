@@ -888,9 +888,15 @@ function initYearData(year) {
 }
 
 window.onload = function() {
-    console.log('🚀 Dashboard Starting...');
-    console.log('📋 Version: 2.2');
     
+    
+	console.log('🚀 Dashboard Starting...');
+    console.log('📋 Version: 2.2');
+
+	setTimeout(function() {
+        populateChecklist();
+    }, 500);
+};
     try {
         // HANYA LOAD DATA, JANGAN RESET
         loadData();
