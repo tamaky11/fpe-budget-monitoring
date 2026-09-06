@@ -1323,7 +1323,9 @@ function exportDataBackup() {
 
         // ============ CHECKLIST FUNCTIONS ============
         function populateChecklist() {
-            const container = document.getElementById('checklistItems');
+                console.log('populateChecklist dipanggil');
+    			const container = document.getElementById('checklistItems');
+    			console.log('container:', container);
             container.innerHTML = '';
             
             categories.forEach(cat => {
@@ -1345,6 +1347,8 @@ function exportDataBackup() {
             const dropdown = document.getElementById('checklistDropdown');
             dropdown.classList.toggle('hidden');
         }
+
+
 
         function handleChecklistChange() {
             const checkboxes = document.querySelectorAll('#checklistItems input[type="checkbox"]');
