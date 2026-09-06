@@ -2721,5 +2721,132 @@ function forceSaveData() {
         <p class="text-xs text-slate-400 mt-1">Klik tombol "Catat" untuk menambahkan data.</p>
     </div>
 </div>
+
+	<!-- Masukkan script ini sebelum penutup </body> -->
+<script type="module">
+  // 1. Import fungsi SDK Firebase via CDN
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { 
+    getFirestore, 
+    doc, 
+    onSnapshot, 
+    setDoc 
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  // 2. Konfigurasi Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyChC9tNjQmh6uesUVR1844Vy3e6PZN8SeM",
+    authDomain: "tamaky11.firebaseapp.com",
+    databaseURL: "https://tamaky11-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "tamaky11",
+    storageBucket: "tamaky11.firebasestorage.app",
+    messagingSenderId: "296847080290",
+    appId: "1:296847080290:web:a4c0b81d5da76db064ca3b",
+    measurementId: "G-VNPFEKW51C"
+  };
+
+  // 3. Inisialisasi Firebase & Firestore
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // State aplikasi
+  let currentYear = new Date().getFullYear().toString();
+  let categories = [];
+  let transactions = [];
+
+  // Referensi dokumen database (Koleksi: budget_monitoring, Dokumen: 2026)
+  const docRef = doc(db, "budget_monitoring", currentYear);
+
+  // 4. Realtime Listener (Otomatis memperbarui tampilan saat ada perubahan data di cloud)
+  onSnapshot(docRef, (docSnap) => {
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      categories = data.categories || [];
+      transactions = data.transactions || [];
+    } else {
+      categories = [];
+      transactions = [];
+      saveDataToFirebase();
+    }
+    renderDashboard();
+  }, (error) => {
+    console.error("Gagal mengambil data dari Firebase:", error);
+  });
+
+  // 5. Fungsi simpan data ke Firestore
+  async function saveDataToFirebase() {
+    try {
+      await setDoc(docRef, {
+        categories: categories,
+        transactions: transactions
+      }, { merge: true });
+    } catch (error) {
+      console.error("Gagal menyimpan data:", error);
+    }
+  }
+
+  // 6. Fungsi Render UI
+  function renderDashboard() {
+    renderSummary();
+    renderTable();
+  }
+
+  function renderSummary() {
+    const totalBudget = categories.reduce((sum, cat) => sum + (Number(cat.amount) || 0), 0);
+    const totalExpense = transactions.reduce((sum, trx) => sum + (Number(trx.amount) || 0), 0);
+    const remaining = totalBudget - totalExpense;
+
+    const budgetEl = document.getElementById('totalBudget');
+    const expenseEl = document.getElementById('totalExpense');
+    const remainingEl = document.getElementById('remainingBalance');
+
+    if (budgetEl) budgetEl.innerText = formatRupiah(totalBudget);
+    if (expenseEl) expenseEl.innerText = formatRupiah(totalExpense);
+    if (remainingEl) remainingEl.innerText = formatRupiah(remaining);
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('transactionList');
+    if (!tbody) return;
+
+    tbody.innerHTML = transactions.map((trx, index) => `
+      <tr>
+        <td>${trx.date || '-'}</td>
+        <td>${trx.category || '-'}</td>
+        <td>${trx.description || '-'}</td>
+        <td>${formatRupiah(trx.amount || 0)}</td>
+        <td>
+          <button onclick="deleteTransaction(${index})">Hapus</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function formatRupiah(number) {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      maximumFractionDigits: 0
+    }).format(number);
+  }
+
+  // 7. Ekspor fungsi ke scope 'window' agar bisa dipanggil dari event HTML (misal: onclick)
+  window.addTransaction = async function(newTrx) {
+    transactions.push(newTrx);
+    await saveDataToFirebase();
+  };
+
+  window.deleteTransaction = async function(index) {
+    transactions.splice(index, 1);
+    await saveDataToFirebase();
+  };
+
+  window.importExcelData = async function(newCategories, newTransactions) {
+    categories = newCategories;
+    transactions = newTransactions;
+    await saveDataToFirebase();
+  };
+</script>
+
 </body>
 </html>
