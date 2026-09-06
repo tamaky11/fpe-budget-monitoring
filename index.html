@@ -1,13 +1,13 @@
-
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="id" class="h-full bg-slate-50">
 <head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>   
+   
+	<!-- Firebase App (Core SDK) -->
+	<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+	<!-- Firebase Firestore -->
+	<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+	
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>   
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Field Production Engineering - Petrochina International Jabung Ltd (SKKMigas) Budget Monitoring</title>
@@ -793,93 +793,72 @@ const YEAR_DATA = {
     }
 };
 
-function saveData() {
-    try {
-        console.log('💾 Menyimpan data...');
-        console.log(`  - Tahun: ${currentYear}`);
-        console.log(`  - Kategori: ${categories.length} items`);
-        console.log(`  - Transaksi: ${transactions.length} items`);
-        
-        // Simpan ke localStorage
-        localStorage.setItem(`fpe_skkmigas_categories_${currentYear}`, JSON.stringify(categories));
-        localStorage.setItem(`fpe_skkmigas_transactions_${currentYear}`, JSON.stringify(transactions));
-        localStorage.setItem('fpe_current_year', currentYear);
-        
-        // Verifikasi
-        const savedCat = localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`);
-        const savedTx = localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`);
-        
-        if (savedCat && savedTx) {
-            const parsedCat = JSON.parse(savedCat);
-            const parsedTx = JSON.parse(savedTx);
-            console.log(`✅ Data berhasil disimpan: ${parsedCat.length} kategori, ${parsedTx.length} transaksi`);
-        } else {
-            console.error('❌ Gagal verifikasi penyimpanan!');
-        }
-        
-        return true;
-    } catch (error) {
-        console.error('❌ Error saving data:', error);
-        showToast('❌ Gagal menyimpan data: ' + error.message, 'error');
-        return false;
-    }
+// 1. Konfigurasi Firebase (ambil dari Console Firebase > Project Settings)
+const firebaseConfig = {
+ 	apiKey: "AIzaSyChC9tNjQmh6uesUVR1844Vy3e6PZN8SeM",
+    authDomain: "tamaky11.firebaseapp.com",
+    databaseURL: "https://tamaky11-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "tamaky11",
+    storageBucket: "tamaky11.firebasestorage.app",
+    messagingSenderId: "296847080290",
+    appId: "1:296847080290:web:a4c0b81d5da76db064ca3b",
+    measurementId: "G-VNPFEKW51C"
+};
+
+// 2. Inisialisasi Firebase & Firestore
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// 3. Perbarui fungsi saveData() agar menyimpan ke Firestore + localStorage
+async function saveData() {
+  // Tetap simpan ke localStorage sebagai backup/cache lokal
+  localStorage.setItem(`fpe_skkmigas_categories_${currentYear}`, JSON.stringify(categories));
+  localStorage.setItem(`fpe_skkmigas_transactions_${currentYear}`, JSON.stringify(transactions));
+
+  try {
+    // Simpan data ke koleksi 'fpe_skkmigas' dengan ID dokumen berdasarkan tahun
+    await db.collection("fpe_skkmigas").doc(String(currentYear)).set({
+      categories: categories,
+      transactions: transactions,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    console.log("Data berhasil tersimpan di Firebase Firestore!");
+  } catch (error) {
+    console.error("Gagal menyimpan data ke Firebase:", error);
+  }
 }
 
+// 4. Perbarui/Buat fungsi loadData() untuk mengambil data dari Firestore saat web dibuka
+async function loadData() {
+  try {
+    const docRef = db.collection("fpe_skkmigas").doc(String(currentYear));
+    const docSnap = await docRef.get();
 
-
-
-  function loadData() {
-    try {
-        const savedYear = localStorage.getItem('fpe_current_year') || '2026';
-        currentYear = savedYear;
-        
-        console.log(`📂 Loading data untuk tahun: ${currentYear}`);
-
-        // CEK APAKAH DATA ADA DI LOCALSTORAGE
-        let savedCategories = localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`);
-        let savedTx = localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`);
-
-        if (savedCategories) {
-            categories = JSON.parse(savedCategories);
-            console.log(`✅ Data kategori ${currentYear} loaded dari localStorage:`, categories.length, 'items');
-        } else {
-            // HANYA jika data TIDAK ADA di localStorage, baru buat default
-            console.log(`⚠️ Data kategori ${currentYear} tidak ditemukan di localStorage, membuat default`);
-            if (currentYear === '2026') {
-                categories = JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES));
-            } else if (currentYear === '2027') {
-                categories = JSON.parse(JSON.stringify(SKKMIGAS_2027_CATEGORIES));
-            } else {
-                categories = JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES));
-            }
-            // SIMPAN ke localStorage agar tidak hilang
-            localStorage.setItem(`fpe_skkmigas_categories_${currentYear}`, JSON.stringify(categories));
-        }
-
-        if (savedTx) {
-            transactions = JSON.parse(savedTx);
-            console.log(`✅ Data transaksi ${currentYear} loaded dari localStorage:`, transactions.length, 'items');
-        } else {
-            // HANYA jika data TIDAK ADA di localStorage, baru buat default
-            console.log(`⚠️ Data transaksi ${currentYear} tidak ditemukan di localStorage, membuat default`);
-            if (currentYear === '2026') {
-                transactions = JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2026));
-            } else if (currentYear === '2027') {
-                transactions = JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2027));
-            } else {
-                transactions = [];
-            }
-            // SIMPAN ke localStorage agar tidak hilang
-            localStorage.setItem(`fpe_skkmigas_transactions_${currentYear}`, JSON.stringify(transactions));
-        }
-        
-        console.log(`📊 Total transaksi saat ini: ${transactions.length}`);
-        return true;
-    } catch (error) {
-        console.error('❌ Error loading data:', error);
-        return false;
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      categories = data.categories || [];
+      transactions = data.transactions || [];
+    } else {
+      // Jika dokumen di Firebase belum ada, pakai data dari localStorage
+      categories = JSON.parse(localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`)) || [];
+      transactions = JSON.parse(localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`)) || [];
     }
+  } catch (error) {
+    console.error("Gagal memuat data dari Firebase, menggunakan data lokal:", error);
+    categories = JSON.parse(localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`)) || [];
+    transactions = JSON.parse(localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`)) || [];
+  }
+
+  // Panggil fungsi pembaruan tampilan UI kamu (misal: render UI)
+  if (typeof renderAll === "function") {
+    renderAll();
+  }
 }
+
+// Jalankan loadData saat aplikasi pertama kali dimuat
+document.addEventListener("DOMContentLoaded", () => {
+  loadData();
+});
       
 
 // Inisialisasi data untuk tahun 2027
@@ -2721,132 +2700,18 @@ function forceSaveData() {
         <p class="text-xs text-slate-400 mt-1">Klik tombol "Catat" untuk menambahkan data.</p>
     </div>
 </div>
+ 
 
-	<!-- Masukkan script ini sebelum penutup </body> -->
-<script type="module">
-  // 1. Import fungsi SDK Firebase via CDN
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { 
-    getFirestore, 
-    doc, 
-    onSnapshot, 
-    setDoc 
-  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  // 2. Konfigurasi Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyChC9tNjQmh6uesUVR1844Vy3e6PZN8SeM",
-    authDomain: "tamaky11.firebaseapp.com",
-    databaseURL: "https://tamaky11-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "tamaky11",
-    storageBucket: "tamaky11.firebasestorage.app",
-    messagingSenderId: "296847080290",
-    appId: "1:296847080290:web:a4c0b81d5da76db064ca3b",
-    measurementId: "G-VNPFEKW51C"
-  };
-
-  // 3. Inisialisasi Firebase & Firestore
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  // State aplikasi
-  let currentYear = new Date().getFullYear().toString();
-  let categories = [];
-  let transactions = [];
-
-  // Referensi dokumen database (Koleksi: budget_monitoring, Dokumen: 2026)
-  const docRef = doc(db, "budget_monitoring", currentYear);
-
-  // 4. Realtime Listener (Otomatis memperbarui tampilan saat ada perubahan data di cloud)
-  onSnapshot(docRef, (docSnap) => {
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      categories = data.categories || [];
-      transactions = data.transactions || [];
-    } else {
-      categories = [];
-      transactions = [];
-      saveDataToFirebase();
-    }
-    renderDashboard();
-  }, (error) => {
-    console.error("Gagal mengambil data dari Firebase:", error);
-  });
-
-  // 5. Fungsi simpan data ke Firestore
-  async function saveDataToFirebase() {
-    try {
-      await setDoc(docRef, {
-        categories: categories,
-        transactions: transactions
-      }, { merge: true });
-    } catch (error) {
-      console.error("Gagal menyimpan data:", error);
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.time < timestamp.date(2026, 10, 6);
     }
   }
-
-  // 6. Fungsi Render UI
-  function renderDashboard() {
-    renderSummary();
-    renderTable();
-  }
-
-  function renderSummary() {
-    const totalBudget = categories.reduce((sum, cat) => sum + (Number(cat.amount) || 0), 0);
-    const totalExpense = transactions.reduce((sum, trx) => sum + (Number(trx.amount) || 0), 0);
-    const remaining = totalBudget - totalExpense;
-
-    const budgetEl = document.getElementById('totalBudget');
-    const expenseEl = document.getElementById('totalExpense');
-    const remainingEl = document.getElementById('remainingBalance');
-
-    if (budgetEl) budgetEl.innerText = formatRupiah(totalBudget);
-    if (expenseEl) expenseEl.innerText = formatRupiah(totalExpense);
-    if (remainingEl) remainingEl.innerText = formatRupiah(remaining);
-  }
-
-  function renderTable() {
-    const tbody = document.getElementById('transactionList');
-    if (!tbody) return;
-
-    tbody.innerHTML = transactions.map((trx, index) => `
-      <tr>
-        <td>${trx.date || '-'}</td>
-        <td>${trx.category || '-'}</td>
-        <td>${trx.description || '-'}</td>
-        <td>${formatRupiah(trx.amount || 0)}</td>
-        <td>
-          <button onclick="deleteTransaction(${index})">Hapus</button>
-        </td>
-      </tr>
-    `).join('');
-  }
-
-  function formatRupiah(number) {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      maximumFractionDigits: 0
-    }).format(number);
-  }
-
-  // 7. Ekspor fungsi ke scope 'window' agar bisa dipanggil dari event HTML (misal: onclick)
-  window.addTransaction = async function(newTrx) {
-    transactions.push(newTrx);
-    await saveDataToFirebase();
-  };
-
-  window.deleteTransaction = async function(index) {
-    transactions.splice(index, 1);
-    await saveDataToFirebase();
-  };
-
-  window.importExcelData = async function(newCategories, newTransactions) {
-    categories = newCategories;
-    transactions = newTransactions;
-    await saveDataToFirebase();
-  };
-</script>
-
+}
+ 
+											 
 </body>
 </html>
