@@ -285,7 +285,7 @@
 </button>
 		
         <!-- Top Metrics / Overview Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 sm:gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <!-- Total Approved Budget Card -->
             <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
                 <div class="flex items-center justify-between">
@@ -302,24 +302,7 @@
                 </div>
             </div>
 
-
-			<!-- Card Outlook Penyerapan EOY -->
-		<div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
-    	<div class="flex items-center justify-between">
-        	<span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Outlook Penyerapan (EOY)</span>
-        	<span id="badgeOutlookPercent" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">
-            0%
-        	</span>
-    	</div>
-    <div class="mt-3">
-        <div id="statTotalOutlook" class="text-2xl font-bold text-slate-900">$ 0</div>
-        <p id="statOutlookStatusText" class="text-xs text-slate-500 mt-1 truncate">
-            Menghitung estimasi...
-        </p>
-    </div>
-</div>
-      
-			<!-- Total Expenditure Card -->
+            <!-- Total Expenditure Card -->
             <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Realisasi (Spent)</span>
@@ -845,6 +828,7 @@ async function saveData() {
   }
 }
 
+// 4. Perbarui/Buat fungsi loadData() untuk mengambil data dari Firestore saat web dibuka
 async function loadData() {
   try {
     const docRef = db.collection("fpe_skkmigas").doc(String(currentYear));
@@ -852,22 +836,18 @@ async function loadData() {
 
     if (docSnap.exists) {
       const data = docSnap.data();
-      categories = data.categories && data.categories.length ? data.categories : JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES));
+      categories = data.categories || [];
       transactions = data.transactions || [];
     } else {
-      categories = JSON.parse(localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`)) || JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES));
-      transactions = JSON.parse(localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`)) || JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2026));
+      // Jika dokumen di Firebase belum ada, pakai data dari localStorage
+      categories = JSON.parse(localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`)) || [];
+      transactions = JSON.parse(localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`)) || [];
     }
   } catch (error) {
     console.error("Gagal memuat data dari Firebase, menggunakan data lokal:", error);
-    categories = JSON.parse(localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`)) || JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES));
-    transactions = JSON.parse(localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`)) || JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2026));
+    categories = JSON.parse(localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`)) || [];
+    transactions = JSON.parse(localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`)) || [];
   }
-
-  if (typeof renderAll === "function") {
-    renderAll();
-  }
-}
 
   // Panggil fungsi pembaruan tampilan UI kamu (misal: render UI)
   if (typeof renderAll === "function") {
@@ -912,19 +892,34 @@ function initYearData(year) {
     }
 }
 
-window.onload = async function() {
+window.onload = function() {
     console.log('🚀 Dashboard Starting...');
+    console.log('📋 Version: 2.2');
+    
     try {
-        await loadData(); // Tunggu data selesai dimuat dari Firebase/Storage
+        // HANYA LOAD DATA, JANGAN RESET
+        loadData();
+        
+        // Debug: cek data setelah load
+        console.log(`📊 Setelah load: ${transactions.length} transaksi`);
+        
+        // Inisialisasi lainnya
         initDateDefault();
+        renderAll();
         populateChecklist();
-        renderAll(); // Render ulang setelah data dipastikan siap
+        
+        // Verifikasi data
+        setTimeout(function() {
+            checkDataIntegrity();
+        }, 500);
+        
         console.log('✅ Dashboard Ready!');
+        
     } catch (error) {
         console.error('❌ Error saat init:', error);
+        showToast('❌ Error loading dashboard', 'error');
     }
 };
-		
 
 		function checkDataIntegrity() {
     console.log('🔍 === DATA INTEGRITY CHECK ===');
@@ -1038,62 +1033,7 @@ function exportDataBackup() {
     showToast('📥 Data backup berhasil di-download', 'success');
 }
 		
-// Menghitung bulan transaksi aktual tertinggi (1–12) dari data transaksi
-function getLatestTransactionMonth(transactions = []) {
-    if (!transactions || transactions.length === 0) {
-        // Jika belum ada data transaksi, default ke bulan berjalan saat ini
-        return new Date().getMonth() + 1; 
-    }
 
-    let maxMonth = 1;
-
-    transactions.forEach(item => {
-        // Mendukung properti date atau transaction_date
-        const dateStr = item.date || item.transaction_date || item.created_at;
-        if (dateStr) {
-            const dateObj = new Date(dateStr);
-            if (!isNaN(dateObj.getTime())) {
-                const month = dateObj.getMonth() + 1; // getMonth() bernilai 0–11
-                if (month > maxMonth) {
-                    maxMonth = month;
-                }
-            }
-        }
-    });
-
-    return maxMonth;
-}
-		
-function calculateOutlook(transactionsArray = []) {
-    const totalBudget = getTotalBudget();
-    const totalSpent = getTotalSpent();
-    
-    // Otomatis mengambil bulan transaksi terakhir
-    const actualMonths = getLatestTransactionMonth(transactionsArray);
-    const remainingMonths = Math.max(0, 12 - actualMonths);
-    
-    // Rata-rata pengeluaran per bulan aktual
-    const avgMonthlySpent = actualMonths > 0 ? (totalSpent / actualMonths) : 0;
-    
-    // Proyeksi sisa bulan
-    const projectedRemainingSpent = avgMonthlySpent * remainingMonths;
-    
-    // Total Outlook sampai akhir tahun (EOY)
-    const totalOutlook = totalSpent + projectedRemainingSpent;
-    
-    // Persentase Outlook terhadap Total Budget
-    const outlookPercent = totalBudget > 0 ? Math.round((totalOutlook / totalBudget) * 100) : 0;
-    
-    return {
-        actualMonths,
-        remainingMonths,
-        avgMonthlySpent,
-        projectedRemainingSpent,
-        totalOutlook,
-        outlookPercent
-    };
-}
-		
         function setCurrency(curr) {
             currentCurrency = curr;
             const btnUSD = document.getElementById('btnCurrUSD');
@@ -1187,69 +1127,37 @@ function calculateOutlook(transactionsArray = []) {
             renderCharts();
         }
 
-
-		function renderSummaryCards() {
-    const totalBudget = getTotalBudget();
+        function renderSummaryCards() {
+                const totalBudget = getTotalBudget();
     const totalSpent = getTotalSpent();
+    const remaining = totalBudget - totalSpent;
     const usagePercent = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
 
     document.getElementById('statTotalBudget').innerHTML = `${formatVal(totalBudget)} <span class="text-xs font-normal text-slate-400">(${currentYear})</span>`;
     document.getElementById('statTotalSpent').innerHTML = `${formatVal(totalSpent)} <span class="text-xs font-normal text-slate-400">(${currentYear})</span>`;
 
-    // Overall Progress Bar & Badge
-    const badge = document.getElementById('badgeUsagePercent');
-    const progressBar = document.getElementById('progressBarOverall');
-    const statusText = document.getElementById('statOverallStatusText');
+            // Overall Progress Bar & Badge
+            const badge = document.getElementById('badgeUsagePercent');
+            const progressBar = document.getElementById('progressBarOverall');
+            const statusText = document.getElementById('statOverallStatusText');
 
-    if (badge && progressBar && statusText) {
-        badge.innerText = `${usagePercent}%`;
-        progressBar.style.width = `${Math.min(usagePercent, 100)}%`;
+            badge.innerText = `${usagePercent}%`;
+            progressBar.style.width = `${Math.min(usagePercent, 100)}%`;
 
-        if (usagePercent > 100) {
-            badge.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800";
-            progressBar.className = "bg-rose-500 h-3 rounded-full transition-all duration-500";
-            statusText.innerText = `Peringatan! Over budget ${usagePercent - 100}%.`;
-        } else if (usagePercent >= 80) {
-            badge.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800";
-            progressBar.className = "bg-amber-500 h-3 rounded-full transition-all duration-500";
-            statusText.innerText = `Mendekati batas budget approved (${usagePercent}%).`;
-        } else {
-            badge.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800";
-            progressBar.className = "bg-emerald-500 h-3 rounded-full transition-all duration-500";
-            statusText.innerText = `Pengeluaran dalam batas aman (${usagePercent}%).`;
+            if (usagePercent > 100) {
+                badge.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800";
+                progressBar.className = "bg-rose-500 h-3 rounded-full transition-all duration-500";
+                statusText.innerText = `Peringatan! Over budget ${usagePercent - 100}%.`;
+            } else if (usagePercent >= 80) {
+                badge.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800";
+                progressBar.className = "bg-amber-500 h-3 rounded-full transition-all duration-500";
+                statusText.innerText = `Mendekati batas budget approved (${usagePercent}%).`;
+            } else {
+                badge.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800";
+                progressBar.className = "bg-emerald-500 h-3 rounded-full transition-all duration-500";
+                statusText.innerText = `Pengeluaran dalam batas aman (${usagePercent}%).`;
+            }
         }
-    }
-
-    // --- INTEGRATION OUTLOOK AUTOMATIC ---
-    // Ganti 'transactions' dengan nama variabel/array transaksi di file JS kamu
-    const sourceData = typeof transactions !== 'undefined' ? transactions : []; 
-    const outlook = calculateOutlook(sourceData);
-
-    const badgeOutlook = document.getElementById('badgeOutlookPercent');
-    const statOutlook = document.getElementById('statTotalOutlook');
-    const statusOutlookText = document.getElementById('statOutlookStatusText');
-
-    if (badgeOutlook && statOutlook && statusOutlookText) {
-        badgeOutlook.innerText = `${outlook.outlookPercent}%`;
-        statOutlook.innerHTML = `${formatVal(outlook.totalOutlook)} <span class="text-xs font-normal text-slate-400">(EOY)</span>`;
-        
-        // Teks indikator dinamis berdasarkan bulan aktual yang didapat
-        if (outlook.remainingMonths > 0) {
-            statusOutlookText.innerText = `Avg B1–B${outlook.actualMonths}: ${formatVal(outlook.avgMonthlySpent)}/bln (${outlook.remainingMonths} bln sisa)`;
-        } else {
-            statusOutlookText.innerText = `Data penuh 12 bulan (Final EOY)`;
-        }
-
-        // Kategori warna badge
-        if (outlook.outlookPercent > 100) {
-            badgeOutlook.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800";
-        } else if (outlook.outlookPercent >= 80) {
-            badgeOutlook.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800";
-        } else {
-            badgeOutlook.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800";
-        }
-    }
-}
 
         function renderCategoryCards() {
             const container = document.getElementById('categoryCardsContainer');
@@ -2716,40 +2624,6 @@ function forceSaveData() {
             showToast(`✅ ${parsed.length} transaksi berhasil disimpan`, 'success');
         }
     }
-}
-
-function showToast(message, type = 'success') {
-    const toast = document.getElementById('toast');
-    const toastMsg = document.getElementById('toastMessage');
-    const toastIcon = document.getElementById('toastIcon');
-    if (!toast || !toastMsg) return;
-
-    toastMsg.innerText = message;
-    if (type === 'error') {
-        toastIcon.className = "fas fa-exclamation-circle text-rose-400 text-sm";
-    } else {
-        toastIcon.className = "fas fa-check-circle text-emerald-400 text-sm";
-    }
-
-    toast.classList.remove('translate-y-20', 'opacity-0');
-    setTimeout(() => {
-        toast.classList.add('translate-y-20', 'opacity-0');
-    }, 3000);
-}
-
-function verifyDataStorage() {
-    console.log("Categories:", categories);
-    console.log("Transactions:", transactions);
-}
-
-function forceSaveData() {
-    saveData();
-    showToast("Data berhasil disimpan!", "success");
-}
-
-function forceRefreshData() {
-    loadData();
-    showToast("Data direfresh!", "success");
 }
 		
     </script>
