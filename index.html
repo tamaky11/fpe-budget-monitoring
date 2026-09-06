@@ -314,6 +314,36 @@
                 </div>
             </div>
 
+
+			<!-- MODAL 4: Preview Import Excel -->
+<div id="modalImportPreview" class="fixed inset-0 z-50 hidden overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+        <!-- Header -->
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+            <div>
+                <h3 class="text-base font-bold text-slate-800">Preview Import Transaksi Excel</h3>
+                <p id="importStats" class="text-xs text-slate-500">0 data siap diimport</p>
+            </div>
+            <button onclick="closeImportPreview()" class="text-slate-400 hover:text-slate-600 rounded-lg p-1">
+                <i class="fas fa-times text-base"></i>
+            </button>
+        </div>
+        <!-- Table Preview Content -->
+        <div id="importPreviewContent" class="p-6 overflow-y-auto flex-1">
+            <!-- Dynamic table from JS -->
+        </div>
+        <!-- Action Buttons -->
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end space-x-2">
+            <button type="button" onclick="closeImportPreview()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+                Batal
+            </button>
+            <button type="button" onclick="confirmImport()" class="px-5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md shadow-emerald-600/20 transition">
+                Konfirmasi Impor Data
+            </button>
+        </div>
+    </div>
+</div>
+			
             <!-- Remaining Budget Card -->
             <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
                 <div class="flex items-center justify-between">
@@ -756,39 +786,7 @@ const YEAR_DATA = {
         let chartVsInstance = null;
         let chartPieInstance = null;
 
-        window.onload = function() {
-    console.log('🚀 Dashboard Starting...');
-    console.log('📋 Version: 2.0');
-    
-    try {
-        // Load data
-        const success = loadData();
-        
-        if (!success) {
-            console.warn('⚠️ Gagal load data, menggunakan default');
-            // Fallback ke data default
-            categories = JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES));
-            transactions = JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2026));
-            saveData();
-        }
-        
-        // Inisialisasi
-        initDateDefault();
-        renderAll();
-        populateChecklist();
-        
-        // Verifikasi data setelah render
-        verifyDataStorage();
-        
-        console.log('✅ Dashboard Ready!');
-        console.log(`📊 Total transaksi: ${transactions.length}`);
-        
-    } catch (error) {
-        console.error('❌ Error saat init:', error);
-        showToast('❌ Error loading dashboard', 'error');
-    }
-};
-
+       
 // 1. Konfigurasi Firebase (ambil dari Console Firebase > Project Settings)
 const firebaseConfig = {
  	apiKey: "AIzaSyChC9tNjQmh6uesUVR1844Vy3e6PZN8SeM",
@@ -2188,28 +2186,27 @@ function parseAmount(amountStr) {
 
 
 function findCategoryId(categoryStr) {
-    if (!categoryStr) return null;
+    if (categoryStr === undefined || categoryStr === null || categoryStr === '') return null;
     
-    const searchStr = categoryStr.toLowerCase().trim();
-    console.log('🔍 Mencari kategori:', searchStr);
-    
+    // Normalisasi input: ubah ke string, lowercase, dan hapus semua spasi/karakter khusus
+    const cleanInput = String(categoryStr).toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!cleanInput) return null;
+
     for (const cat of categories) {
-        // Cek apakah searchStr cocok dengan kode atau nama
-        const codeMatch = cat.code.toLowerCase() === searchStr;
-        const codePartialMatch = cat.code.toLowerCase().includes(searchStr);
-        const nameMatch = cat.name.toLowerCase().includes(searchStr);
-        const searchInCode = searchStr.includes(cat.code.toLowerCase());
-        
-        if (codeMatch || codePartialMatch || nameMatch || searchInCode) {
-            console.log('✅ Kategori ditemukan:', cat.code, cat.name);
+        const cleanCode = String(cat.code).toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanName = String(cat.name).toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        // Cocokkan jika kode GL sama persis (tanpa spasi/titik) atau nama kategori mengandung input
+        if (cleanCode === cleanInput || cleanInput.includes(cleanCode) || cleanCode.includes(cleanInput) || cleanName.includes(cleanInput)) {
             return cat.id;
         }
     }
     
-    console.log('❌ Kategori tidak ditemukan:', searchStr);
+    console.log('❌ Kategori tidak ditemukan:', categoryStr);
     return null;
 }
-
+		
+    
 function showImportPreview() {
     const modal = document.getElementById('modalImportPreview');
     const content = document.getElementById('importPreviewContent');
