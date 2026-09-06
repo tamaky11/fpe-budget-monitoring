@@ -2,7 +2,9 @@
 <html lang="id" class="h-full bg-slate-50">
 <head>
    
-		<!-- Firebase Firestore -->
+	<!-- Firebase App (Core SDK) -->
+	<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+	<!-- Firebase Firestore -->
 	<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 	
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>   
@@ -277,7 +279,11 @@
     <span class="hidden sm:inline">Simpan</span>
 </button>
 
-	
+<!-- Tambahkan di header atau utility menu -->
+<button onclick="forceRefreshData()" class="w-full text-left px-4 py-2 text-xs text-blue-600 hover:bg-blue-50 flex items-center">
+    <i class="fas fa-sync text-blue-500 w-5"></i> Refresh Data
+</button>
+		
         <!-- Top Metrics / Overview Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <!-- Total Approved Budget Card -->
@@ -753,8 +759,40 @@ const YEAR_DATA = {
 };
         let chartVsInstance = null;
         let chartPieInstance = null;
+
+        window.onload = function() {
+    console.log('🚀 Dashboard Starting...');
+    console.log('📋 Version: 2.0');
+    
+    try {
+        // Load data
+        const success = loadData();
         
-   
+        if (!success) {
+            console.warn('⚠️ Gagal load data, menggunakan default');
+            // Fallback ke data default
+            categories = JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES));
+            transactions = JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2026));
+            saveData();
+        }
+        
+        // Inisialisasi
+        initDateDefault();
+        renderAll();
+        populateChecklist();
+        
+        // Verifikasi data setelah render
+        verifyDataStorage();
+        
+        console.log('✅ Dashboard Ready!');
+        console.log(`📊 Total transaksi: ${transactions.length}`);
+        
+    } catch (error) {
+        console.error('❌ Error saat init:', error);
+        showToast('❌ Error loading dashboard', 'error');
+    }
+};
+
 // 1. Konfigurasi Firebase (ambil dari Console Firebase > Project Settings)
 const firebaseConfig = {
  	apiKey: "AIzaSyChC9tNjQmh6uesUVR1844Vy3e6PZN8SeM",
@@ -2255,40 +2293,54 @@ function closeImportPreview() {
     importErrors = [];
 }
 
-// Tambahkan fungsi download template Excel
-function downloadExcelTemplate() {
-    const templateData = [
-        { "Tanggal": "2026-01-15", "Line Budget": "1504 564", "Deskripsi": "Perforating Service Field A", "Nominal": 125000 },
-        { "Tanggal": "2026-01-20", "Line Budget": "1210 007", "Deskripsi": "Sewa Alat ESP", "Nominal": 45000 }
-    ];
-    
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template");
-    XLSX.writeFile(wb, `Template_Import_Budget_${currentYear}.xlsx`);
-}
-
-// Perbaikan fungsi confirmImport
 function confirmImport() {
+    console.log('🔍 confirmImport() dipanggil');
+    console.log('📊 importData:', importData);
+    console.log('📊 importData length:', importData.length);
+    
     if (importData.length === 0) {
         showToast('⚠️ Tidak ada data yang valid untuk diimport', 'error');
         return;
     }
     
-    const count = importData.length;
-    if (confirm(`Apakah Anda yakin ingin mengimport ${count} transaksi ke tahun ${currentYear}?`)) {
+    if (confirm(`Apakah Anda yakin ingin mengimport ${importData.length} transaksi ke tahun ${currentYear}?`)) {
         try {
-            transactions = [...importData, ...transactions];
-            saveData();
-            renderAll();
+            console.log('🔄 Memulai import...');
+            console.log('📊 Transactions sebelum import:', transactions.length);
             
-            // Dapatkan jumlah sebelum data di-reset
+            // Tambahkan transaksi baru di awal (paling atas)
+            transactions = [...importData, ...transactions];
+            
+            console.log('📊 Transactions setelah import:', transactions.length);
+            
+            // PASTIKAN DATA DISIMPAN
+            saveData();
+            
+            // Verifikasi data tersimpan
+            const verifyCategories = localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`);
+            const verifyTx = localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`);
+            console.log('✅ Verifikasi save:', {
+                categories: verifyCategories ? JSON.parse(verifyCategories).length : 0,
+                transactions: verifyTx ? JSON.parse(verifyTx).length : 0
+            });
+            
+            // Render ulang
+            renderAll();
             closeImportPreview();
-            showToast(`✅ Berhasil mengimport ${count} transaksi`, 'success');
+            
+            // Reset import data
+            importData = [];
+            importErrors = [];
+            
+            showToast(`✅ Berhasil mengimport ${importData.length} transaksi`, 'success');
+            console.log('✅ Import selesai!');
+            
         } catch (error) {
-            console.error('Error saat import:', error);
+            console.error('❌ Error saat import:', error);
             showToast('❌ Gagal import data: ' + error.message, 'error');
         }
+    } else {
+        console.log('❌ Import dibatalkan oleh user');
     }
 }
 
@@ -2339,6 +2391,52 @@ function forceSaveAndReload() {
     }
 }
 		
+// ============ FUNGSI DOWNLOAD TEMPLATE EXCEL ============
+function downloadExcelTemplate() {
+    // Data template dengan contoh
+    const templateData = [
+        ['Tanggal', 'Kategori', 'Deskripsi', 'Nominal'],
+        ['01/01/2026', '1504 564', 'Contoh transaksi 1', '100000'],
+        ['15/01/2026', '1210 007', 'Contoh transaksi 2', '50000'],
+        ['01/02/2026', '1400 016', 'Contoh transaksi 3', '25000']
+    ];
+    
+    try {
+        // Cek apakah library XLSX tersedia
+        if (typeof XLSX === 'undefined') {
+            showToast('⚠️ Library Excel belum dimuat. Silakan refresh halaman.', 'error');
+            return;
+        }
+        
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(templateData);
+        
+        // Set lebar kolom
+        ws['!cols'] = [
+            { wch: 15 },  // Tanggal
+            { wch: 20 },  // Kategori
+            { wch: 30 },  // Deskripsi
+            { wch: 15 }   // Nominal
+        ];
+        
+        XLSX.utils.book_append_sheet(wb, ws, 'Transaksi');
+        
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/octet-stream' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `Template_Import_Transaksi_${currentYear || '2026'}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showToast('📥 Template Excel berhasil di-download', 'success');
+    } catch (error) {
+        console.error('Error download template:', error);
+        showToast('❌ Gagal mendownload template', 'error');
+    }
+}
+
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             const toastMessage = document.getElementById('toastMessage');
@@ -2527,21 +2625,6 @@ function forceSaveData() {
         }
     }
 }
-
-
-       window.onload = async function() {
-    console.log('🚀 Dashboard Starting...');
-    try {
-        await loadData();
-        initDateDefault();
-        renderAll();
-        populateChecklist();
-        console.log('✅ Dashboard Ready!');
-    } catch (error) {
-        console.error('❌ Error saat init:', error);
-        showToast('❌ Error loading dashboard', 'error');
-    }
-};
 		
     </script>
 
@@ -2619,42 +2702,16 @@ function forceSaveData() {
 </div>
  
 
-<!-- MODAL 4: Preview Import Excel -->
-<div id="modalImportPreview" class="fixed inset-0 z-50 hidden overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-100 overflow-hidden">
-        <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-            <div>
-                <h3 class="text-base font-bold text-slate-800">Preview Import Data</h3>
-                <p id="importStats" class="text-xs text-slate-500">0 data siap diimport</p>
-            </div>
-            <button onclick="closeImportPreview()" class="text-slate-400 hover:text-slate-600 rounded-lg p-1">
-                <i class="fas fa-times text-base"></i>
-            </button>
-        </div>
-        <div id="importPreviewContent" class="p-6 max-h-[60vh] overflow-y-auto">
-            <!-- Isi preview dari JavaScript -->
-        </div>
-        <div class="flex items-center justify-end space-x-2 p-4 bg-slate-50 border-t border-slate-100">
-            <button onclick="closeImportPreview()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">
-                Batal
-            </button>
-            <button onclick="confirmImport()" class="px-5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md shadow-emerald-600/20 transition">
-                Proses Import
-            </button>
-        </div>
-    </div>
-</div>
-		
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match/{document=**} {
+    match /{document=**} {
       allow read, write: if request.time < timestamp.date(2026, 10, 6);
     }
   }
 }
  
-
 											 
 </body>
 </html>
