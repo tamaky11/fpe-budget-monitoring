@@ -803,26 +803,25 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// 3. Perbarui fungsi saveData() agar menyimpan ke Firestore + localStorage
 async function saveData() {
-  // Tetap simpan ke localStorage sebagai backup/cache lokal
+  // Simpan ke localStorage sebagai cache
   localStorage.setItem(`fpe_skkmigas_categories_${currentYear}`, JSON.stringify(categories));
   localStorage.setItem(`fpe_skkmigas_transactions_${currentYear}`, JSON.stringify(transactions));
 
   try {
-    // Simpan data ke koleksi 'fpe_skkmigas' dengan ID dokumen berdasarkan tahun
     await db.collection("fpe_skkmigas").doc(String(currentYear)).set({
       categories: categories,
       transactions: transactions,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    console.log("Data berhasil tersimpan di Firebase Firestore!");
+    console.log("✅ Data berhasil tersimpan di Firebase Firestore!");
   } catch (error) {
-    console.error("Gagal menyimpan data ke Firebase:", error);
+    console.error("❌ Gagal menyimpan data ke Firebase:", error);
+    // Tampilkan toast error
+    showToast('❌ Gagal menyimpan ke Firebase: ' + error.message, 'error');
   }
 }
 
-// 4. Perbarui/Buat fungsi loadData() untuk mengambil data dari Firestore saat web dibuka
 async function loadData() {
   try {
     const docRef = db.collection("fpe_skkmigas").doc(String(currentYear));
@@ -832,18 +831,23 @@ async function loadData() {
       const data = docSnap.data();
       categories = data.categories || [];
       transactions = data.transactions || [];
+      console.log(`✅ Data ${currentYear} loaded dari Firestore:`, categories.length, 'categories,', transactions.length, 'transactions');
     } else {
-      // Jika dokumen di Firebase belum ada, pakai data dari localStorage
-      categories = JSON.parse(localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`)) || [];
-      transactions = JSON.parse(localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`)) || [];
+      // Firestore kosong, gunakan data kosong (atau data default jika ingin, tapi lebih baik kosong)
+      categories = [];
+      transactions = [];
+      console.log(`ℹ️ Tidak ada data di Firestore untuk tahun ${currentYear}, menggunakan data kosong.`);
     }
+    // Simpan ke localStorage sebagai cache (opsional)
+    localStorage.setItem(`fpe_skkmigas_categories_${currentYear}`, JSON.stringify(categories));
+    localStorage.setItem(`fpe_skkmigas_transactions_${currentYear}`, JSON.stringify(transactions));
   } catch (error) {
     console.error("Gagal memuat data dari Firebase, menggunakan data lokal:", error);
+    // Fallback ke localStorage jika error
     categories = JSON.parse(localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`)) || [];
     transactions = JSON.parse(localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`)) || [];
   }
 
-  // Panggil fungsi pembaruan tampilan UI kamu (misal: render UI)
   if (typeof renderAll === "function") {
     renderAll();
   }
@@ -854,66 +858,23 @@ document.addEventListener("DOMContentLoaded", () => {
   loadData();
 });
       
-
-// Inisialisasi data untuk tahun 2027
-function initYearData(year) {
-    if (!year) year = '2027';
-    
-    // Cek apakah data sudah ada
-    const existingCategories = localStorage.getItem(`fpe_skkmigas_categories_${year}`);
-    const existingTx = localStorage.getItem(`fpe_skkmigas_transactions_${year}`);
-    
-    if (!existingCategories) {
-        let defaultCategories;
-        if (year === '2027') {
-            defaultCategories = JSON.parse(JSON.stringify(SKKMIGAS_2027_CATEGORIES));
-        } else {
-            defaultCategories = JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES));
-        }
-        localStorage.setItem(`fpe_skkmigas_categories_${year}`, JSON.stringify(defaultCategories));
-        console.log(`✅ Data kategori ${year} diinisialisasi`);
-    }
-    
-    if (!existingTx) {
-        let defaultTx;
-        if (year === '2027') {
-            defaultTx = JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2027));
-        } else {
-            defaultTx = JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2026));
-        }
-        localStorage.setItem(`fpe_skkmigas_transactions_${year}`, JSON.stringify(defaultTx));
-        console.log(`✅ Data transaksi ${year} diinisialisasi`);
-    }
-}
-
 window.onload = function() {
     console.log('🚀 Dashboard Starting...');
     console.log('📋 Version: 2.2');
     
-    try {
-        // HANYA LOAD DATA, JANGAN RESET
-        loadData();
-        
-        // Debug: cek data setelah load
-        console.log(`📊 Setelah load: ${transactions.length} transaksi`);
-        
-        // Inisialisasi lainnya
+    // Hapus inisialisasi data default di sini, cukup loadData
+    loadData().then(() => {
         initDateDefault();
         renderAll();
         populateChecklist();
-        
-        // Verifikasi data
-        setTimeout(function() {
-            checkDataIntegrity();
-        }, 500);
-        
+        setTimeout(checkDataIntegrity, 500);
         console.log('✅ Dashboard Ready!');
-        
-    } catch (error) {
+    }).catch(error => {
         console.error('❌ Error saat init:', error);
         showToast('❌ Error loading dashboard', 'error');
-    }
+    });
 };
+
 
 		function checkDataIntegrity() {
     console.log('🔍 === DATA INTEGRITY CHECK ===');
@@ -953,60 +914,27 @@ window.onload = function() {
 }
 		
 	function setYear(year) {
-    console.log(`🔄 Switching to year: ${year}`);
-    
-    // Pastikan data untuk tahun tersebut ada
-    const existingCategories = localStorage.getItem(`fpe_skkmigas_categories_${year}`);
-    const existingTx = localStorage.getItem(`fpe_skkmigas_transactions_${year}`);
-    
-    if (!existingCategories || !existingTx) {
-        console.log(`📂 Data untuk tahun ${year} belum ada, membuat baru...`);
-        initYearData(year);
-    }
-    
-    currentYear = year;
-    
-    // Update button styles
-    document.getElementById('btnYear2026').className = year === '2026' ? 
-        'px-2.5 py-1 rounded-lg bg-white text-brand-700 shadow-sm' : 
-        'px-2.5 py-1 rounded-lg hover:text-slate-900';
-    document.getElementById('btnYear2027').className = year === '2027' ? 
-        'px-2.5 py-1 rounded-lg bg-white text-brand-700 shadow-sm' : 
-        'px-2.5 py-1 rounded-lg hover:text-slate-900';
-    
-    // Load data
-    const savedCategories = localStorage.getItem(`fpe_skkmigas_categories_${year}`);
-    const savedTx = localStorage.getItem(`fpe_skkmigas_transactions_${year}`);
-    
-    if (savedCategories) {
-        categories = JSON.parse(savedCategories);
-    } else {
-        categories = year === '2026' ? 
-            JSON.parse(JSON.stringify(SKKMIGAS_2026_CATEGORIES)) : 
-            JSON.parse(JSON.stringify(SKKMIGAS_2027_CATEGORIES));
-        localStorage.setItem(`fpe_skkmigas_categories_${year}`, JSON.stringify(categories));
-    }
-    
-    if (savedTx) {
-        transactions = JSON.parse(savedTx);
-    } else {
-        transactions = year === '2026' ? 
-            JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2026)) : 
-            JSON.parse(JSON.stringify(SAMPLE_TRANSACTIONS_2027));
-        localStorage.setItem(`fpe_skkmigas_transactions_${year}`, JSON.stringify(transactions));
-    }
-    
-    localStorage.setItem('fpe_current_year', year);
-    
+  console.log(`🔄 Switching to year: ${year}`);
+  currentYear = year;
+  
+  // Update button styles
+  document.getElementById('btnYear2026').className = year === '2026' ? 
+      'px-2.5 py-1 rounded-lg bg-white text-brand-700 shadow-sm' : 
+      'px-2.5 py-1 rounded-lg hover:text-slate-900';
+  document.getElementById('btnYear2027').className = year === '2027' ? 
+      'px-2.5 py-1 rounded-lg bg-white text-brand-700 shadow-sm' : 
+      'px-2.5 py-1 rounded-lg hover:text-slate-900';
+  
+  // Panggil loadData (yang ambil dari Firestore)
+  loadData().then(() => {
     // Reset checklist
     selectedChecklistItems.clear();
-    
     // Re-render
     renderAll();
     populateChecklist();
-    
     console.log(`✅ Selesai beralih ke tahun ${year}, transaksi: ${transactions.length}`);
     showToast(`Berganti ke tahun ${year}`, 'success');
+  });
 }
 
 
