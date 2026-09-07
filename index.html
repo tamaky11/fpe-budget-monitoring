@@ -822,7 +822,6 @@ async function saveData() {
   }
 }
 
-// 4. Perbarui/Buat fungsi loadData() untuk mengambil data dari Firestore saat web dibuka
 async function loadData() {
   try {
     const docRef = db.collection("fpe_skkmigas").doc(String(currentYear));
@@ -833,7 +832,7 @@ async function loadData() {
       categories = data.categories || [];
       transactions = data.transactions || [];
     } else {
-      // Jika dokumen di Firebase belum ada, pakai data dari localStorage
+      
       categories = JSON.parse(localStorage.getItem(`fpe_skkmigas_categories_${currentYear}`)) || [];
       transactions = JSON.parse(localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`)) || [];
     }
@@ -843,8 +842,7 @@ async function loadData() {
     transactions = JSON.parse(localStorage.getItem(`fpe_skkmigas_transactions_${currentYear}`)) || [];
   }
 
-  // Panggil fungsi pembaruan tampilan UI kamu (misal: render UI)
-  if (typeof renderAll === "function") {
+    if (typeof renderAll === "function") {
     renderAll();
   }
 }
@@ -891,18 +889,14 @@ window.onload = function() {
     console.log('📋 Version: 2.2');
     
     try {
-        // HANYA LOAD DATA, JANGAN RESET
         loadData();
         
-        // Debug: cek data setelah load
         console.log(`📊 Setelah load: ${transactions.length} transaksi`);
         
-        // Inisialisasi lainnya
         initDateDefault();
         renderAll();
         populateChecklist();
         
-        // Verifikasi data
         setTimeout(function() {
             checkDataIntegrity();
         }, 500);
@@ -915,7 +909,7 @@ window.onload = function() {
     }
 };
 
-		function checkDataIntegrity() {
+	function checkDataIntegrity() {
     console.log('🔍 === DATA INTEGRITY CHECK ===');
     console.log(`📌 Tahun aktif: ${currentYear}`);
     console.log(`📊 Kategori di memory: ${categories.length} items`);
@@ -1436,17 +1430,10 @@ function exportDataBackup() {
             updateActiveFiltersDisplay(searchQuery, filteredCategories.length);
 
 
-	    const container = document.getElementById('activeFiltersDisplay');
-    let html = '';
-
-  // Show current year
-    html += `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-medium">
-        <i class="fas fa-calendar text-[8px]"></i> Tahun ${currentYear}
-    </span>`;
             const labels = filteredCategories.map(c => c.code);
             const budgetData = filteredCategories.map(c => currentCurrency === 'USD' ? c.budget : c.budget * USD_TO_IDR);
             const spentData = filteredCategories.map(c => {
-                const spentUSD = getCategorySpent(c.id);
+            const spentUSD = getCategorySpent(c.id);
                 return currentCurrency === 'USD' ? spentUSD : spentUSD * USD_TO_IDR;
             });
             const categoryColors = filteredCategories.map(c => c.color);
@@ -1609,8 +1596,7 @@ function exportDataBackup() {
                 </span>`;
             }
             
-            container.innerHTML = html || '';
-        }
+    }
 
         function openTxModal(editId = null) {
             const modal = document.getElementById('modalTx');
