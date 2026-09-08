@@ -51,6 +51,29 @@
     </script>
     <style>
 
+.page-number-btn {
+    min-width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.page-number-btn:hover:not(.active) {
+    background-color: #f1f5f9;
+    border-color: #e2e8f0;
+}
+.page-number-btn.active {
+    background-color: #0284c7;
+    color: white;
+    border-color: #0284c7;
+}
+		
 /* Style untuk checkbox di tabel */
 .transaction-checkbox {
     accent-color: #0284c7;
@@ -734,7 +757,11 @@ let currentCurrency = 'USD';
 let currentYear = '2026'; // Default year
 const USD_TO_IDR = 16000;
 let selectedChecklistItems = new Set();
+let currentPage = 1;
+const ITEMS_PER_PAGE = 10; // jumlah transaksi per halaman
+let filteredTransactions = [];
 
+		
 // Official SKKMigas Approved Budget 2026 Items (2638111)
 const SKKMIGAS_2026_CATEGORIES = [
     { id: 'cat_1504_564', code: '1504 564', name: 'Perforating & Wireline Service', icon: 'fa-oil-well', color: '#0284c7', budget: 10836888 },
@@ -1236,23 +1263,24 @@ function exportDataBackup() {
             filterSelect.value = currentFilter || 'ALL';
         }
 
-        function renderTransactionList() {
+	function renderTransactionList() {
     const tbody = document.getElementById('transactionTableBody');
     const emptyState = document.getElementById('emptyState');
+    const paginationContainer = document.getElementById('paginationContainer');
 
     const searchVal = document.getElementById('filterSearch').value.toLowerCase();
     const catFilter = document.getElementById('filterCategory').value;
     const sortFilter = document.getElementById('filterSort').value;
 
     // Filter
-    let filtered = transactions.filter(t => {
+    filteredTransactions = transactions.filter(t => {
         const matchesSearch = (t.description || '').toLowerCase().includes(searchVal);
         const matchesCat = catFilter === 'ALL' || t.categoryId === catFilter;
         return matchesSearch && matchesCat;
     });
 
     // Sort
-    filtered.sort((a, b) => {
+    filteredTransactions.sort((a, b) => {
         if (sortFilter === 'NEWEST') return new Date(b.date) - new Date(a.date);
         if (sortFilter === 'OLDEST') return new Date(a.date) - new Date(b.date);
         if (sortFilter === 'HIGHEST') return b.amount - a.amount;
@@ -1260,22 +1288,31 @@ function exportDataBackup() {
         return 0;
     });
 
+    const totalItems = filteredTransactions.length;
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
+    const pageItems = filteredTransactions.slice(startIndex, endIndex);
+
     tbody.innerHTML = '';
 
-    if (filtered.length === 0) {
+    if (pageItems.length === 0) {
         emptyState.classList.remove('hidden');
-        // Reset selection UI
+        if (paginationContainer) paginationContainer.style.display = 'none';
         selectedTransactionIds.clear();
         updateSelectionUI();
     } else {
         emptyState.classList.add('hidden');
+        if (paginationContainer) paginationContainer.style.display = 'flex';
 
-        filtered.forEach(t => {
+        pageItems.forEach(t => {
             const cat = categories.find(c => c.id === t.categoryId) || { code: 'OTHER', name: 'Lainnya', icon: 'fa-tag', color: '#64748b' };
             const isNegative = t.amount < 0;
             const amountClass = isNegative ? 'transaction-amount-negative' : 'transaction-amount-positive';
             const isChecked = selectedTransactionIds.has(t.id) ? 'checked' : '';
-            
+
             const rowHtml = `
                 <tr class="hover:bg-slate-50/80 transition-colors transaction-row" data-id="${t.id}">
                     <td class="py-3 px-4 text-center">
@@ -1306,14 +1343,66 @@ function exportDataBackup() {
             `;
             tbody.insertAdjacentHTML('beforeend', rowHtml);
         });
-        
-        // Update selection UI setelah render
+
+        document.getElementById('paginationStart').textContent = totalItems === 0 ? 0 : startIndex + 1;
+        document.getElementById('paginationEnd').textContent = endIndex;
+        document.getElementById('paginationTotal').textContent = totalItems;
+
+        renderPaginationButtons(totalPages);
         updateSelectionUI();
+    }
+}       
+
+	function renderPaginationButtons(totalPages) {
+    const container = document.getElementById('pageNumbers');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const prevBtn = document.getElementById('prevPageBtn');
+    const nextBtn = document.getElementById('nextPageBtn');
+    if (prevBtn) prevBtn.disabled = currentPage <= 1;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+
+    if (totalPages <= 1) {
+        container.innerHTML = `<span class="page-number-btn active">1</span>`;
+        return;
+    }
+
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+    if (currentPage <= 3) {
+        endPage = Math.min(5, totalPages);
+    } else if (currentPage > totalPages - 3) {
+        startPage = Math.max(1, totalPages - 4);
+    }
+
+    if (startPage > 1) {
+        container.innerHTML += `<button class="page-number-btn" onclick="goToPage(1)">1</button>`;
+        if (startPage > 2) container.innerHTML += `<span class="px-1 text-slate-400">...</span>`;
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        const active = i === currentPage ? 'active' : '';
+        container.innerHTML += `<button class="page-number-btn ${active}" onclick="goToPage(${i})">${i}</button>`;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) container.innerHTML += `<span class="px-1 text-slate-400">...</span>`;
+        container.innerHTML += `<button class="page-number-btn" onclick="goToPage(${totalPages})">${totalPages}</button>`;
     }
 }
 
-        function applyFilters() {
-    // Reset selection saat filter berubah
+function goToPage(page) {
+    const totalItems = filteredTransactions.length;
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    currentPage = page;
+    renderTransactionList();
+    document.querySelector('.overflow-x-auto').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+		
+	function applyFilters() {
+    currentPage = 1;
     selectedTransactionIds.clear();
     document.getElementById('selectAllCheckbox').checked = false;
     document.getElementById('selectAllHeader').checked = false;
@@ -2564,6 +2653,7 @@ function deleteSelectedTransactions() {
             
             // Save dan render ulang
             saveData();
+			currentPage = 1; 
             renderAll();
             
             // Update UI
@@ -2592,6 +2682,7 @@ function deleteAllTransactions() {
             
             // Save dan render ulang
             saveData();
+			currentPage = 1; 
             renderAll();
             
             // Update UI
@@ -2696,6 +2787,25 @@ function forceSaveData() {
         <p class="text-sm font-medium text-slate-600">Belum ada transaksi realisasi pengeluaran</p>
         <p class="text-xs text-slate-400 mt-1">Klik tombol "Catat" untuk menambahkan data.</p>
     </div>
+
+<!-- Pagination Controls -->
+<div id="paginationContainer" class="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-slate-50/80">
+    <div class="text-xs text-slate-500">
+        Menampilkan <span id="paginationStart">0</span> - <span id="paginationEnd">0</span> 
+        dari <span id="paginationTotal">0</span> transaksi
+    </div>
+    <div class="flex items-center gap-1">
+        <button id="prevPageBtn" onclick="goToPage(currentPage - 1)" 
+                class="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <div id="pageNumbers" class="flex items-center gap-1"></div>
+        <button id="nextPageBtn" onclick="goToPage(currentPage + 1)" 
+                class="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-50 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+
 </div>
  
 
