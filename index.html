@@ -29,6 +29,15 @@
     <!-- SheetJS untuk membaca file Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+	<!-- User Status & Logout -->
+<span id="userStatus" class="hidden md:inline-flex items-center gap-2 text-xs font-medium text-slate-600">
+    <i class="fas fa-user-circle text-brand-600"></i>
+    <span id="userNameDisplay"></span>
+    <button onclick="logout()" class="text-rose-500 hover:text-rose-700 transition-colors">
+        <i class="fas fa-sign-out-alt"></i>
+    </button>
+</span>
+	
     <script>
         tailwind.config = {
             theme: {
@@ -210,6 +219,146 @@
             height: 14px;
             cursor: pointer;
         }
+
+/* === LOGIN MODAL === */
+#loginModal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+#loginModal.show {
+    display: flex;
+}
+
+.login-box {
+    background: #1e293b;
+    padding: 2.5rem 2rem;
+    border-radius: 1.5rem;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    width: 100%;
+    max-width: 400px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.login-box .logo {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.login-box .logo i {
+    font-size: 2.5rem;
+    color: #0284c7;
+    background: rgba(2,132,199,0.1);
+    padding: 1rem;
+    border-radius: 1rem;
+}
+
+.login-box .logo h1 {
+    color: #f1f5f9;
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-top: 0.75rem;
+}
+
+.login-box .logo p {
+    color: #94a3b8;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.login-box .form-group {
+    margin-bottom: 1.25rem;
+}
+
+.login-box label {
+    display: block;
+    color: #cbd5e1;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+}
+
+.login-box input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: #f1f5f9;
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+}
+
+.login-box input:focus {
+    outline: none;
+    border-color: #0284c7;
+    box-shadow: 0 0 0 3px rgba(2,132,199,0.2);
+}
+
+.login-box .login-btn {
+    width: 100%;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 0.75rem;
+    background: #0284c7;
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.login-box .login-btn:hover {
+    background: #0369a1;
+}
+
+.login-box .login-btn:active {
+    transform: scale(0.98);
+}
+
+.login-box .login-btn-cancel {
+    background: #475569;
+    margin-top: 0.5rem;
+}
+
+.login-box .login-btn-cancel:hover {
+    background: #334155;
+}
+
+.login-box .error-msg {
+    color: #f87171;
+    font-size: 0.875rem;
+    text-align: center;
+    margin-top: 0.75rem;
+    min-height: 1.5rem;
+}
+
+.login-box .footer-text {
+    text-align: center;
+    color: #64748b;
+    font-size: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+/* Indikator user login */
+#userStatus {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#userStatus.show {
+    display: inline-flex;
+}
+
+		
     </style>
 </head>
 <body class="h-full flex flex-col font-sans text-slate-800 bg-slate-50 antialiased selection:bg-brand-500 selection:text-white">
@@ -904,7 +1053,8 @@ document.addEventListener("DOMContentLoaded", () => {
 window.onload = function() {
     console.log('🚀 Dashboard Starting...');
     console.log('📋 Version: 2.2');
-    
+
+	initAuthStatus(); //
     // Hapus inisialisasi data default di sini, cukup loadData
     loadData().then(() => {
         initDateDefault();
@@ -1501,6 +1651,93 @@ function goToPage(page) {
             }
         });
 
+		// ===== AUTENTIKASI (Edit butuh login) =====
+const VALID_USER = {
+    username: 'FPE',
+    password: 'engineer'
+};
+
+let pendingEditAction = null;
+
+function checkLoginBeforeEdit(actionCallback) {
+    if (sessionStorage.getItem('fpe_logged_in') === 'true') {
+        // Sudah login, jalankan langsung
+        if (typeof actionCallback === 'function') actionCallback();
+        return;
+    }
+    // Belum login, simpan aksi dan tampilkan modal
+    pendingEditAction = actionCallback;
+    document.getElementById('loginModal').classList.add('show');
+    document.getElementById('loginUsernameEdit').focus();
+    document.getElementById('loginErrorEdit').textContent = '';
+}
+
+function handleLoginEdit(e) {
+    e.preventDefault();
+    const username = document.getElementById('loginUsernameEdit').value.trim();
+    const password = document.getElementById('loginPasswordEdit').value.trim();
+    const errorEl = document.getElementById('loginErrorEdit');
+
+    errorEl.textContent = '';
+
+    if (!username || !password) {
+        errorEl.textContent = '❌ Username dan password harus diisi!';
+        return;
+    }
+
+    if (username === VALID_USER.username && password === VALID_USER.password) {
+        sessionStorage.setItem('fpe_logged_in', 'true');
+        sessionStorage.setItem('fpe_user', username);
+        updateUserStatus(true, username);
+        closeLoginModal();
+        if (typeof pendingEditAction === 'function') {
+            pendingEditAction();
+            pendingEditAction = null;
+        }
+        showToast(`✅ Login berhasil, ${username}!`, 'success');
+    } else {
+        errorEl.textContent = '❌ Username atau password salah!';
+        document.getElementById('loginPasswordEdit').value = '';
+        document.getElementById('loginPasswordEdit').focus();
+    }
+}
+
+function closeLoginModal() {
+    document.getElementById('loginModal').classList.remove('show');
+    pendingEditAction = null;
+    document.getElementById('loginErrorEdit').textContent = '';
+    document.getElementById('loginForm').reset();
+}
+
+function updateUserStatus(loggedIn, username) {
+    const statusEl = document.getElementById('userStatus');
+    const nameEl = document.getElementById('userNameDisplay');
+    if (loggedIn && username) {
+        nameEl.textContent = username;
+        statusEl.classList.add('show');
+    } else {
+        statusEl.classList.remove('show');
+    }
+}
+
+function logout() {
+    sessionStorage.removeItem('fpe_logged_in');
+    sessionStorage.removeItem('fpe_user');
+    updateUserStatus(false);
+    showToast('Logout berhasil', 'success');
+}
+
+// Cek status login saat halaman dimuat
+function initAuthStatus() {
+    const loggedIn = sessionStorage.getItem('fpe_logged_in') === 'true';
+    const user = sessionStorage.getItem('fpe_user') || '';
+    if (loggedIn && user) {
+        updateUserStatus(true, user);
+    } else {
+        updateUserStatus(false);
+    }
+}
+		
         function renderCharts() {
             // Get filter values
             const scaleControl = document.getElementById('chartScaleControl').value;
@@ -1701,31 +1938,33 @@ function goToPage(page) {
             container.innerHTML = html || '';
         }
 
-        function openTxModal(editId = null) {
-            const modal = document.getElementById('modalTx');
-            const title = document.getElementById('modalTxTitle');
-            const form = document.getElementById('formTx');
 
-            form.reset();
-            initDateDefault();
+		function openTxModal(editId = null) {
+    checkLoginBeforeEdit(function() {
+        // Isi modal transaksi seperti biasa
+        const modal = document.getElementById('modalTx');
+        const title = document.getElementById('modalTxTitle');
+        const form = document.getElementById('formTx');
+        form.reset();
+        initDateDefault();
 
-            if (editId) {
-                const tx = transactions.find(t => t.id === editId);
-                if (tx) {
-                    title.innerText = 'Edit Realisasi Pengeluaran';
-                    document.getElementById('txEditId').value = tx.id;
-                    document.getElementById('txAmount').value = currentCurrency === 'USD' ? tx.amount : tx.amount * USD_TO_IDR;
-                    document.getElementById('txCategory').value = tx.categoryId;
-                    document.getElementById('txDate').value = tx.date;
-                    document.getElementById('txDescription').value = tx.description;
-                }
-            } else {
-                title.innerText = 'Catat Realisasi Pengeluaran';
-                document.getElementById('txEditId').value = '';
+        if (editId) {
+            const tx = transactions.find(t => t.id === editId);
+            if (tx) {
+                title.innerText = 'Edit Realisasi Pengeluaran';
+                document.getElementById('txEditId').value = tx.id;
+                document.getElementById('txAmount').value = currentCurrency === 'USD' ? tx.amount : tx.amount * USD_TO_IDR;
+                document.getElementById('txCategory').value = tx.categoryId;
+                document.getElementById('txDate').value = tx.date;
+                document.getElementById('txDescription').value = tx.description;
             }
-
-            modal.classList.remove('hidden');
+        } else {
+            title.innerText = 'Catat Realisasi Pengeluaran';
+            document.getElementById('txEditId').value = '';
         }
+        modal.classList.remove('hidden');
+    });
+}
 
         function closeTxModal() {
             document.getElementById('modalTx').classList.add('hidden');
@@ -1780,52 +2019,55 @@ function goToPage(page) {
             openTxModal(id);
         }
 
-        function deleteTx(id) {
-            showConfirm(
-                'Hapus Transaksi',
-                'Apakah Anda yakin ingin menghapus transaksi realisasi ini?',
-                () => {
-                    transactions = transactions.filter(t => t.id !== id);
-                    saveData();
-                    renderAll();
-                    showToast('Transaksi berhasil dihapus', 'success');
-                }
-            );
-        }
+     	function deleteTx(id) {
+    checkLoginBeforeEdit(function() {
+        showConfirm(
+            'Hapus Transaksi',
+            'Apakah Anda yakin ingin menghapus transaksi realisasi ini?',
+            () => {
+                transactions = transactions.filter(t => t.id !== id);
+                saveData();
+                renderAll();
+                showToast('Transaksi berhasil dihapus', 'success');
+            }
+        );
+    });
+}
 
-        function openBudgetModal() {
-             	const modal = document.getElementById('modalBudget');
-    	        const listContainer = document.getElementById('budgetInputsList');
-    		listContainer.innerHTML = '';
-    
-    		// Update modal title dengan tahun
-   		 document.querySelector('#modalBudget .text-base.font-bold').innerHTML = 
-      		`Update Alokasi Approved Budget Line Budget (${currentYear})`;
+       function openBudgetModal() {
+    checkLoginBeforeEdit(function() {
+        const modal = document.getElementById('modalBudget');
+        const listContainer = document.getElementById('budgetInputsList');
+        listContainer.innerHTML = '';
+        
+        document.querySelector('#modalBudget .text-base.font-bold').innerHTML = 
+            `Update Alokasi Approved Budget Line Budget (${currentYear})`;
 
-            categories.forEach(cat => {
-                const val = currentCurrency === 'USD' ? cat.budget : cat.budget * USD_TO_IDR;
-                const itemHtml = `
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/50 gap-2">
-                        <div class="flex items-center space-x-2.5">
-                            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs flex-shrink-0" style="background-color: ${cat.color}">
-                                <i class="fas ${cat.icon}"></i>
-                            </div>
-                            <div>
-                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 uppercase">${cat.code}</span>
-                                <div class="text-xs font-semibold text-slate-800 line-clamp-1">${cat.name}</div>
-                            </div>
+        categories.forEach(cat => {
+            const val = currentCurrency === 'USD' ? cat.budget : cat.budget * USD_TO_IDR;
+            const itemHtml = `
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/50 gap-2">
+                    <div class="flex items-center space-x-2.5">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs flex-shrink-0" style="background-color: ${cat.color}">
+                            <i class="fas ${cat.icon}"></i>
                         </div>
-                        <div class="relative w-full sm:w-44 shrink-0">
-                            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">${currentCurrency === 'USD' ? '$' : 'Rp'}</span>
-                            <input type="number" data-cat-id="${cat.id}" value="${val}" min="0" step="any" class="budget-input w-full pl-8 pr-2 py-1.5 text-sm font-bold border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 text-right">
+                        <div>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 uppercase">${cat.code}</span>
+                            <div class="text-xs font-semibold text-slate-800 line-clamp-1">${cat.name}</div>
                         </div>
                     </div>
-                `;
-                listContainer.insertAdjacentHTML('beforeend', itemHtml);
-            });
+                    <div class="relative w-full sm:w-44 shrink-0">
+                        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">${currentCurrency === 'USD' ? '$' : 'Rp'}</span>
+                        <input type="number" data-cat-id="${cat.id}" value="${val}" min="0" step="any" class="budget-input w-full pl-8 pr-2 py-1.5 text-sm font-bold border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 text-right">
+                    </div>
+                </div>
+            `;
+            listContainer.insertAdjacentHTML('beforeend', itemHtml);
+        });
 
-            modal.classList.remove('hidden');
-        }
+        modal.classList.remove('hidden');
+    });
+}
 
         function closeBudgetModal() {
             document.getElementById('modalBudget').classList.add('hidden');
@@ -1918,7 +2160,8 @@ let importErrors = [];
 
 // ============ FUNGSI IMPORT EXCEL DENGAN DEBUG ============
 function handleFileImport(event) {
-    const file = event.target.files[0];
+    checkLoginBeforeEdit(function() {
+	const file = event.target.files[0];
     if (!file) {
         console.log('❌ Tidak ada file yang dipilih');
         return;
@@ -1986,6 +2229,7 @@ function handleFileImport(event) {
     
     // Reset input
     event.target.value = '';
+});
 }
 
 function processExcelData(data) {
@@ -2635,62 +2879,48 @@ function updateSelectionUI() {
 }
 
 function deleteSelectedTransactions() {
-    const count = selectedTransactionIds.size;
-    if (count === 0) {
-        showToast('⚠️ Tidak ada transaksi yang dipilih', 'error');
-        return;
-    }
-    
-    showConfirm(
-        'Hapus Transaksi Terpilih',
-        `Apakah Anda yakin ingin menghapus ${count} transaksi yang dipilih?`,
-        () => {
-            // Hapus transaksi yang dipilih
-            transactions = transactions.filter(t => !selectedTransactionIds.has(t.id));
-            
-            // Clear selection
-            selectedTransactionIds.clear();
-            
-            // Save dan render ulang
-            saveData();
-			currentPage = 1; 
-            renderAll();
-            
-            // Update UI
-            updateSelectionUI();
-            
-            showToast(`✅ Berhasil menghapus ${count} transaksi`, 'success');
+    checkLoginBeforeEdit(function() {
+        const count = selectedTransactionIds.size;
+        if (count === 0) {
+            showToast('⚠️ Tidak ada transaksi yang dipilih', 'error');
+            return;
         }
-    );
+        showConfirm(
+            'Hapus Transaksi Terpilih',
+            `Apakah Anda yakin ingin menghapus ${count} transaksi yang dipilih?`,
+            () => {
+                transactions = transactions.filter(t => !selectedTransactionIds.has(t.id));
+                selectedTransactionIds.clear();
+                saveData();
+                currentPage = 1;
+                renderAll();
+                updateSelectionUI();
+                showToast(`✅ Berhasil menghapus ${count} transaksi`, 'success');
+            }
+        );
+    });
 }
 
 function deleteAllTransactions() {
-    if (transactions.length === 0) {
-        showToast('⚠️ Tidak ada transaksi untuk dihapus', 'error');
-        return;
-    }
-    
-    showConfirm(
-        'Hapus Semua Transaksi',
-        `Apakah Anda yakin ingin menghapus SEMUA ${transactions.length} transaksi? Tindakan ini tidak dapat dibatalkan!`,
-        () => {
-            // Kosongkan transaksi
-            transactions = [];
-            
-            // Clear selection
-            selectedTransactionIds.clear();
-            
-            // Save dan render ulang
-            saveData();
-			currentPage = 1; 
-            renderAll();
-            
-            // Update UI
-            updateSelectionUI();
-            
-            showToast(`✅ Berhasil menghapus semua transaksi`, 'success');
+    checkLoginBeforeEdit(function() {
+        if (transactions.length === 0) {
+            showToast('⚠️ Tidak ada transaksi untuk dihapus', 'error');
+            return;
         }
-    );
+        showConfirm(
+            'Hapus Semua Transaksi',
+            `Apakah Anda yakin ingin menghapus SEMUA ${transactions.length} transaksi? Tindakan ini tidak dapat dibatalkan!`,
+            () => {
+                transactions = [];
+                selectedTransactionIds.clear();
+                saveData();
+                currentPage = 1;
+                renderAll();
+                updateSelectionUI();
+                showToast(`✅ Berhasil menghapus semua transaksi`, 'success');
+            }
+        );
+    });
 }
 
 function forceSaveData() {
@@ -2807,7 +3037,32 @@ function forceSaveData() {
     </div>
 
 </div>
- 
+
+	<!-- LOGIN MODAL (untuk aksi edit) -->
+<div id="loginModal">
+    <div class="login-box">
+        <div class="logo">
+            <i class="fas fa-lock"></i>
+            <h1>Verifikasi Edit</h1>
+            <p>Masukkan kredensial untuk melanjutkan</p>
+        </div>
+        <form id="loginForm" onsubmit="handleLoginEdit(event)">
+            <div class="form-group">
+                <label for="loginUsernameEdit">Username</label>
+                <input type="text" id="loginUsernameEdit" placeholder="Masukkan username" required autofocus>
+            </div>
+            <div class="form-group">
+                <label for="loginPasswordEdit">Password</label>
+                <input type="password" id="loginPasswordEdit" placeholder="Masukkan password" required>
+            </div>
+            <div id="loginErrorEdit" class="error-msg"></div>
+            <button type="submit" class="login-btn">Login</button>
+            <button type="button" onclick="closeLoginModal()" class="login-btn login-btn-cancel">Batal</button>
+        </form>
+        <div class="footer-text">© 2026 FPE PCJL – SKKMigas</div>
+    </div>
+</div>
+	
 											 
 </body>
 </html>
