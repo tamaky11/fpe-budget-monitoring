@@ -1259,18 +1259,18 @@ function exportDataBackup() {
     const monthsPassed = maxMonth;              // bulan terlewati (Jan s/d bulan terakhir)
     const remainingMonths = 12 - monthsPassed;  // bulan tersisa hingga Desember
 
-    // Total nilai transaksi dari Januari hingga bulan terakhir
-    const totalYTD = yearTransactions.reduce((sum, t) => sum + t.amount, 0);
+    // Total Realisasi (Spent) tahun berjalan
+    const totalSpent = getTotalSpent();
 
-    // Rata-rata dari total transaksi (per bulan)
-    const avgMonthly = totalYTD / monthsPassed;
+    // Rata-rata bulanan = Total Realisasi ÷ bulan terlewati
+    const avgMonthly = totalSpent / monthsPassed;
 
-    // Jika sudah Desember, outlook = totalYTD (tidak ada bulan tersisa)
-    if (remainingMonths <= 0) return totalYTD;
+    // Jika sudah Desember (tidak ada bulan tersisa), outlook = Total Realisasi
+    if (remainingMonths <= 0) return totalSpent;
 
-    // ===== RUMUS BARU =====
-    // Outlook = TotalYTD + (Rata-rata Bulanan × Bulan Tersisa)
-    return totalYTD + (avgMonthly * remainingMonths);
+    // ===== RUMUS FINAL =====
+    // Outlook = Total Realisasi + (Rata-rata × Bulan Tersisa)
+    return totalSpent + (avgMonthly * remainingMonths);
 }
 		
         function renderAll() {
