@@ -1236,29 +1236,37 @@ function exportDataBackup() {
 
 
         function getOutlookYTD() {
-            // Ambil transaksi tahun berjalan
-            const yearTransactions = transactions.filter(t => {
-                const txDate = new Date(t.date);
-                return txDate.getFullYear() === parseInt(currentYear);
-            });
+    // Ambil transaksi tahun berjalan
+    const yearTransactions = transactions.filter(t => {
+        const txDate = new Date(t.date);
+        return txDate.getFullYear() === parseInt(currentYear);
+    });
 
-            if (yearTransactions.length === 0) return 0;
+    if (yearTransactions.length === 0) return 0;
 
-            // Cari bulan terakhir dari transaksi (maksimum)
-            let maxMonth = 0;
-            yearTransactions.forEach(t => {
-                const month = new Date(t.date).getMonth() + 1; // 1-12
-                if (month > maxMonth) maxMonth = month;
-            });
+    // Cari bulan terakhir dari transaksi (maksimum)
+    let maxMonth = 0;
+    yearTransactions.forEach(t => {
+        const month = new Date(t.date).getMonth() + 1; // 1-12
+        if (month > maxMonth) maxMonth = month;
+    });
 
-            const monthsPassed = maxMonth; // asumsi dari Januari
-            const totalSpent = yearTransactions.reduce((sum, t) => sum + t.amount, 0);
-            const avgMonthly = totalSpent / monthsPassed;
-            const remainingMonths = 12 - monthsPassed;
+    const monthsPassed = maxMonth;           // bulan terlewati (Jan s/d bulan terakhir)
+    const remainingMonths = 12 - monthsPassed; // bulan tersisa hingga Desember
 
-            // Outlook = rata-rata bulanan × bulan tersisa
-            return avgMonthly * remainingMonths;
-        }
+    // Total nilai transaksi dari Januari hingga bulan terakhir
+    const totalYTD = yearTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+    // Rata-rata dari total transaksi (per bulan)
+    const avgMonthly = totalYTD / monthsPassed;
+
+    // Jika tidak ada bulan tersisa (sudah Desember), outlook = totalYTD
+    if (remainingMonths <= 0) return totalYTD;
+
+    // ===== RUMUS BARU =====
+    // Outlook = Total YTD + (Rata-rata Bulanan / Bulan Tersisa)
+    return totalYTD + (avgMonthly / remainingMonths);
+}
 		
         function renderAll() {
             renderSummaryCards();
@@ -1292,23 +1300,24 @@ function exportDataBackup() {
                 return d.getFullYear() === parseInt(currentYear);
             });
             if (yearTx.length > 0) {
-                let maxMonth = 0;
-                yearTx.forEach(t => {
-                    const m = new Date(t.date).getMonth() + 1;
-                    if (m > maxMonth) maxMonth = m;
-                });
-                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-                const monthName = monthNames[maxMonth - 1];
-                document.getElementById('statOutlookSubtitle').innerHTML = `
-                    <i class="fas fa-calendar-alt text-purple-400 mr-1.5"></i> 
-                    Proyeksi full year (rata-rata hingga ${monthName} ${currentYear} × 12)
-                `;
-            } else {
-                document.getElementById('statOutlookSubtitle').innerHTML = `
-                    <i class="fas fa-calendar-alt text-purple-400 mr-1.5"></i> 
-                    Proyeksi full year (12 bulan)
-                `;
-            }
+    			let maxMonth = 0;
+    			yearTx.forEach(t => {
+        		const m = new Date(t.date).getMonth() + 1;
+        		if (m > maxMonth) maxMonth = m;
+    		});
+    			const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    			const monthName = monthNames[maxMonth - 1];
+    			const remaining = 12 - maxMonth;
+    			document.getElementById('statOutlookSubtitle').innerHTML = `
+        		<i class="fas fa-calendar-alt text-purple-400 mr-1.5"></i> 
+        		YTD + (Rata-rata hingga ${monthName} ${currentYear} ÷ ${remaining} bulan tersisa)
+    			`;
+			} else {
+    			document.getElementById('statOutlookSubtitle').innerHTML = `
+        		<i class="fas fa-calendar-alt text-purple-400 mr-1.5"></i> 
+        		Belum ada transaksi
+    		`;
+}
 
 			
 			// Overall Progress Bar & Badge
